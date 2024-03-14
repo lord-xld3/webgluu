@@ -1,0 +1,15 @@
+{
+  "name": "gluu",
+  "version": "0.1.0",
+  "description": "A tiny library to glue together some parts of WebGL",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Kyle Simmons",
+  "license": "ISC",
+  "dependencies": {
+    "@loaders.gl/core": "^4.1.3",
+    "@loaders.gl/gltf": "^4.1.3"
+  }
+}
