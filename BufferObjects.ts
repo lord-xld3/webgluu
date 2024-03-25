@@ -4,8 +4,8 @@ import { u32 } from './Types';
 /**
  * A GL "BufferObject" has a valid buffer of data and describes how to use that buffer.
  */
-abstract class BufferObject {
-    private readonly buf: WebGLBuffer;
+export abstract class BufferObject {
+    protected readonly buf: WebGLBuffer;
     private readonly target: GLintptr;
     private readonly usage: GLenum;
     
@@ -16,7 +16,10 @@ abstract class BufferObject {
      * @link
      * [bindBuffer()](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/bindBuffer)
      */
-    constructor(target: GLintptr, usage: GLenum = gl.STATIC_DRAW) {
+    constructor(
+        target: GLintptr, 
+        usage: GLenum = gl.STATIC_DRAW
+    ) {
         this.buf = gl.createBuffer() as WebGLBuffer;
         if (!this.buf) {
             throw new Error(`Failed to create BufferObject using context: ${gl}`);
@@ -136,6 +139,7 @@ export class VertexBufferObject extends BufferObject {
         attributes: AttributePointerInfo[],
         usage?: number,
     ) {
+        // Verify attributes and map default values to pointers.
         super(gl.ARRAY_BUFFER, usage);
         this.ptrs = attributes.map(ptr => {
             const index = gl.getAttribLocation(program, ptr.attribute);
@@ -152,6 +156,8 @@ export class VertexBufferObject extends BufferObject {
                 offset: ptr.offset 
             } as AttributePointer;
         });
+
+        // Bind VBO, copy data, and enable all attribute pointers.
         this.bind();
         this.setBuffer(data);
         this.ptrs.forEach(ptr => {
@@ -167,18 +173,75 @@ export class VertexBufferObject extends BufferObject {
         });
     }
 
+    // /**
+    //  * Enable or disable the vertex attribute.
+    //  * @param attribute - The name of the attribute.
+    //  * @param enabled - True to enable, false to disable.
+    //  */
+    // public toggleAttribute(
+    //     attribute: string, 
+    //     enabled: boolean,
+    // ): void {
+    //     const ptr = this.ptrs.find(p => p.attribute === attribute);
+    //     if (!ptr) throw new Error(
+    //         `Attribute "${attribute}" not found in VBO: ${this}.`
+    //     );
+    //     enabled ? 
+    //         gl.enableVertexAttribArray(ptr.index) 
+    //     : gl.disableVertexAttribArray(ptr.index);
+    // }
+}
+
+/**
+ * A Uniform BufferObject (UBO) targets gl.UNIFORM_BUFFER.
+ */
+export class UniformBufferObject extends BufferObject {
+    private readonly blockIndex: GLuint;
+
     /**
-     * Enable or disable the vertex attribute.
-     * @param attribute - The name of the attribute.
-     * @param enable - (default: false).
+     * Creates a new UniformBufferObject.
+     * @param program - The shader program associated with the UBO.
+     * @param blockName - The name of the uniform block.
+     * @param binding - The binding index for the uniform block.
+     * @param data - The data buffer.
+     * @param usage - Data usage pattern (default: gl.STATIC_DRAW).
      */
-    public toggleAttribute(attribute: string, enable: boolean = false): void {
-        const ptr = this.ptrs.find(p => p.attribute === attribute);
-        if (!ptr) throw new Error(
-            `Attribute "${attribute}" not found in VBO: ${this}.`
-        );
-        enable ? 
-            gl.enableVertexAttribArray(ptr.index) 
-        : gl.disableVertexAttribArray(ptr.index);
+    constructor(
+        program: WebGLProgram,
+        blockName: string,
+        binding: GLuint,
+        data?: ArrayBufferView,
+        usage?: u32,
+    ) {
+        super(gl.UNIFORM_BUFFER, usage);
+        this.blockIndex = gl.getUniformBlockIndex(program, blockName);
+        if (this.blockIndex === gl.INVALID_INDEX) {
+            throw new Error(`Uniform block "${blockName}" not found in program: ${program}`);
+        }
+        if (data) {
+            this.bind();
+            this.setBuffer(data);
+            this.unbind();
+        }
+
+        gl.uniformBlockBinding(program, this.blockIndex, binding);
+    }
+
+    public override bind(): void {
+        super.bind();
+        gl.bindBufferBase(gl.UNIFORM_BUFFER, this.blockIndex, this.buf);
+    }
+
+    public override unbind(): void {
+        gl.bindBufferBase(gl.UNIFORM_BUFFER, this.blockIndex, null);
+        super.unbind();
+    }
+
+    public override setBuffer(data: ArrayBufferView): void {
+        // Workaround for alignment issues on some devices, pads buffer to 16 byte alignment.
+        const alignedSize = (data.byteLength + 15) & ~15;
+        const alignedBuffer = new (data.constructor as any)(alignedSize);
+        alignedBuffer.set(data);
+        super.setBuffer(alignedBuffer);
     }
 }
