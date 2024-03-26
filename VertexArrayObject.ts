@@ -1,5 +1,5 @@
 import { gl } from "./Context";
-import { VertexBufferObject, ElementBufferObject, BufferObject } from "./BufferObjects";
+import { VertexBufferObject, ElementBufferObject } from "./BufferObjects";
 
 /**
  * A Vertex Array Object (VAO) encapsulates a vertex buffer object (VBO) and an optional element buffer object (EBO).
@@ -10,23 +10,24 @@ export class VertexArrayObject {
     
     /**
      * Creates a new VertexArrayObject.
-     * @param drawFunc - The draw function.
+     * @param draw - The draw function.
      * @param vbo - The VertexBufferObject to encapsulate.
      * @param ebo - The ElementBufferObject to encapsulate (optional).
      */
     constructor(
-        drawFunc: () => void,
+        draw: () => void,
         vbo: VertexBufferObject,
         ebo?: ElementBufferObject,
     ) {
-        this.draw = drawFunc;
+        this.draw = draw;
         this.vao = gl.createVertexArray() as WebGLVertexArrayObject;
+       
         this.bind();
         vbo.bind();
         ebo?.bind();
         
-        // If this is not unbound, it may "leak" into other VAOs, since the EBO is optional.
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+        this.unbind();
+        ebo?.unbind();
     }
 
     /**
@@ -36,19 +37,19 @@ export class VertexArrayObject {
         gl.bindVertexArray(this.vao);
     }
 
-    // /**
-    //  * Unbinds the VertexArrayObject.
-    //  */
-    // public unbind(): void {
-    //     gl.bindVertexArray(null);
-    // }
+    /**
+     * Unbinds the VertexArrayObject.
+     */
+    public unbind(): void {
+        gl.bindVertexArray(null);
+    }
 
-    // /**
-    //  * Sets the draw function.
-    //  * @param drawFunc - The draw function.
-    //  */
-    // public setDrawFunc(drawFunc: () => void): void {
-    //     this.draw = drawFunc;
-    // }
+    /**
+     * Sets the draw function.
+     * @param draw - The draw function.
+     */
+    public setDraw(draw: () => void): void {
+        this.draw = draw;
+    }
 }
 

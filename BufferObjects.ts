@@ -89,7 +89,6 @@ export class ElementBufferObject extends BufferObject {
         super(gl.ELEMENT_ARRAY_BUFFER, usage);
         this.bind();
         this.setBuffer(data);
-        this.unbind();
     }
 }
 
@@ -210,7 +209,7 @@ export class UniformBufferObject extends BufferObject {
         program: WebGLProgram,
         blockName: string,
         binding: GLuint,
-        data?: ArrayBufferView,
+        data: ArrayBufferView,
         usage?: u32,
     ) {
         super(gl.UNIFORM_BUFFER, usage);
@@ -218,12 +217,9 @@ export class UniformBufferObject extends BufferObject {
         if (this.blockIndex === gl.INVALID_INDEX) {
             throw new Error(`Uniform block "${blockName}" not found in program: ${program}`);
         }
-        if (data) {
-            this.bind();
-            this.setBuffer(data);
-            this.unbind();
-        }
 
+        this.bind();
+        this.setBuffer(data);
         gl.uniformBlockBinding(program, this.blockIndex, binding);
     }
 

@@ -41,7 +41,6 @@ export function useContext(
     context: GluuContext,
 ): void {
     gl = context;
-    return;
 }
 
 /**
@@ -50,7 +49,7 @@ export function useContext(
  * @throws If it fails to get a WebGL2 context, throws an error.
  */
 export function createContext(
-    canvas: HTMLCanvasElement | OffscreenCanvas
+    canvas: HTMLCanvasElement | OffscreenCanvas,
 ): GluuContext {
     const gl = canvas.getContext("webgl2") as GluuContext;
     if (!gl) {
@@ -58,16 +57,26 @@ export function createContext(
     }
 
     if (canvas instanceof HTMLCanvasElement) {
-        gl.resize = function (width?: u32, height?: u32, x?: u32, y?: u32) {
+        gl.resize = function (
+            width?: u32, 
+            height?: u32, 
+            x: u32 = 0, 
+            y: u32 = 0,
+        ) {
             canvas.width = width ?? canvas.clientWidth;
             canvas.height = height ?? canvas.clientHeight;
-            gl.viewport(x ?? 0, y ?? 0, canvas.width, canvas.height);
+            gl.viewport(x, y, canvas.width, canvas.height);
         }
     } else {
-        gl.resize = function (width?: u32, height?: u32, x?: u32, y?: u32) {
-            canvas.width = width?? 0;
-            canvas.height = height?? 0;
-            gl.viewport(x ?? 0, y ?? 0, canvas.width, canvas.height);
+        gl.resize = function (
+            width: u32 = 0, 
+            height: u32 = 0, 
+            x: u32 = 0, 
+            y: u32 = 0,
+        ) {
+            canvas.width = width;
+            canvas.height = height;
+            gl.viewport(x, y, canvas.width, canvas.height);
         }
     }
 
