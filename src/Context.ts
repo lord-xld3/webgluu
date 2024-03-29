@@ -5,20 +5,20 @@ import { u32 } from "./Types";
  */
 interface GluuContext extends WebGL2RenderingContext {
     /**
-     * Resizes the canvas/viewport to match client size.
+     * Resizes the viewport to match client canvas size.
      * @note
      * On an OffscreenCanvas, everything defaults to 0.
      */
     resize(): void;
     /**
-     * Resizes the canvas/viewport to given dimensions.
+     * Resizes the viewport to given dimensions.
      * @param width - The width of the viewport.
      * @param height - The height of the viewport.
      * @throws Viewport dimensions must be positive.
      */
     resize(width?: u32, height?: u32): void;
     /**
-     * Resizes the canvas/viewport to given dimensions.
+     * Resizes the viewport to given dimensions.
      * @param width - The width of the viewport.
      * @param height - The height of the viewport.
      * @param x - The horizontal coordinate for the lower left corner of the viewport origin. Default: 0.
@@ -56,29 +56,23 @@ export function createContext(
         throw new Error("Failed to get WebGL2 context");
     }
 
-    if (canvas instanceof HTMLCanvasElement) {
-        gl.resize = function (
-            width?: u32, 
-            height?: u32, 
-            x: u32 = 0, 
+    gl.resize = (canvas instanceof HTMLCanvasElement) ? 
+        function (
+            width: u32 = canvas.clientWidth,
+            height: u32 = canvas.clientHeight,
+            x: u32 = 0,
             y: u32 = 0,
-        ) {
-            canvas.width = width ?? canvas.clientWidth;
-            canvas.height = height ?? canvas.clientHeight;
-            gl.viewport(x, y, canvas.width, canvas.height);
-        }
-    } else {
-        gl.resize = function (
-            width: u32 = 0, 
-            height: u32 = 0, 
-            x: u32 = 0, 
-            y: u32 = 0,
-        ) {
-            canvas.width = width;
-            canvas.height = height;
-            gl.viewport(x, y, canvas.width, canvas.height);
-        }
+        ): void {
+            gl.viewport(x, y, width, height);
+        } 
+    : function (
+        width: u32 = 0,
+        height: u32 = 0,
+        x: u32 = 0,
+        y: u32 = 0,
+    ): void { 
+        gl.viewport(x, y, width, height); 
     }
-
+    
     return gl;
 }

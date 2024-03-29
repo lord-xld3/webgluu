@@ -1,12 +1,11 @@
 import { gl } from "./Context";
-import { VertexBufferObject, ElementBufferObject } from "./BufferObjects";
+import { VertexBufferObject, ElementBufferObject } from "./BufferObject";
 
 /**
  * A Vertex Array Object (VAO) encapsulates a vertex buffer object (VBO) and an optional element buffer object (EBO).
  */
 export class VertexArrayObject {
     private readonly vao: WebGLVertexArrayObject;
-    public draw: () => void;
     
     /**
      * Creates a new VertexArrayObject.
@@ -15,11 +14,9 @@ export class VertexArrayObject {
      * @param ebo - The ElementBufferObject to encapsulate (optional).
      */
     constructor(
-        draw: () => void,
         vbo: VertexBufferObject,
         ebo?: ElementBufferObject,
     ) {
-        this.draw = draw;
         this.vao = gl.createVertexArray() as WebGLVertexArrayObject;
        
         this.bind();
@@ -35,6 +32,7 @@ export class VertexArrayObject {
      */
     public bind(): void {
         gl.bindVertexArray(this.vao);
+        gl.enableVertexAttribArray(0);
     }
 
     /**
@@ -43,13 +41,4 @@ export class VertexArrayObject {
     public unbind(): void {
         gl.bindVertexArray(null);
     }
-
-    /**
-     * Sets the draw function.
-     * @param draw - The draw function.
-     */
-    public setDraw(draw: () => void): void {
-        this.draw = draw;
-    }
 }
-
