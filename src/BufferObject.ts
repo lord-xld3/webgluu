@@ -11,8 +11,8 @@ abstract class BufferObject {
     
     /**
      * Creates a BufferObject.
-     * @param target - Binding point of the BufferObject.
-     * @param usage - Data usage pattern (default: gl.STATIC_DRAW).
+     * @param {GLenum} target - Binding point of the BufferObject.
+     * @param {GLenum} [usage=gl.STATIC_DRAW] - Data usage pattern (default: gl.STATIC_DRAW).
      * @link
      * [bindBuffer()](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/bindBuffer)
      */
@@ -74,14 +74,14 @@ abstract class BufferObject {
 }
 
 /**
- * An Element BufferObject (EBO) targets gl.ELEMENT_ARRAY_BUFFER.
+ * An Element BufferObject (EBO) holds vertex indices.
  */
 export class ElementBufferObject extends BufferObject {
     static readonly target = WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER;
     /**
      * Creates a new ElementBufferObject.
-     * @param data - The data buffer.
-     * @param usage - Data usage pattern (default: gl.STATIC_DRAW).
+     * @param {ArrayBufferView} data - The data buffer.
+     * @param {GLenum} [usage=gl.STATIC_DRAW] - Data usage pattern (default: gl.STATIC_DRAW).
      */
     constructor(
         data: ArrayBufferView,
@@ -119,7 +119,7 @@ export type AttributePointerInfo = {
 type AttributePointer = Required<AttributePointerInfo> & { index: GLint };
 
 /**
- * Represents a Vertex Buffer Object (VBO) for storing and managing vertex attribute data.
+ * A Vertex BufferObject (VBO) holds vertex data.
  */
 export class VertexBufferObject extends BufferObject{
     static readonly target = WebGL2RenderingContext.ARRAY_BUFFER;
@@ -129,7 +129,7 @@ export class VertexBufferObject extends BufferObject{
      * Creates a new VertexBufferObject.
      * @param {ArrayBufferView} data - The data buffer.
      * @param {Object[]} attributes - Information about vertex attribute pointers.
-     * @param {GLenum} [usage=gl.STATIC_DRAW] - Data usage pattern.
+     * @param {GLenum} [usage=gl.STATIC_DRAW] - Data usage pattern (default: gl.STATIC_DRAW).
      */
     constructor(
         data: ArrayBufferView,
@@ -181,7 +181,7 @@ export class VertexBufferObject extends BufferObject{
 }
 
 /**
- * A Uniform BufferObject (UBO) targets gl.UNIFORM_BUFFER.
+ * A Uniform BufferObject (UBO) holds uniform data.
  */
 export class UniformBufferObject extends BufferObject {
     private readonly blockIndex: GLuint;
@@ -222,7 +222,22 @@ export class UniformBufferObject extends BufferObject {
     }
 
     public override setBuffer(data: ArrayBufferView): void {
-        // Workaround for alignment issues on some devices, pads buffer to 16 byte alignment.
+        /* Okay, I know this looks like black magic, let me explain.
+
+        ALL scalars like a "bool" are 4 bytes, but if we just pass in the bool it fails spectacularly on Linux, in my experience.
+        If you pass in more data than the uniform block can hold, GL doesn't care.
+        If you pass in LESS data, the whole program blows up.
+
+        This takes (length + 15) AND NOT 15.
+
+        0 + 15 AND NOT 15 = 0
+        1 + 15 AND NOT 15 = 16
+        ...
+
+        Then creates a new ArrayBuffer of the type that was passed in (data.constructor as any) and sets the data.
+
+        tldr; buffer must be a multiple of 16 bytes or everything explodes on SOME devices.
+        */
         const alignedSize = (data.byteLength + 15) & ~15;
         const alignedBuffer = new (data.constructor as any)(alignedSize);
         alignedBuffer.set(data);

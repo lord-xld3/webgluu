@@ -1,15 +1,22 @@
 import { u32 } from "./Types";
 
+/**
+ * Initializes a WebGL2 context with extended functionality.
+ * @param canvas - The canvas element to use.
+ * @param options - The WebGL context attributes to use.
+ * @returns GluuContext - A custom WebGL2 context.
+ */
 export function init(
     canvas: HTMLCanvasElement | OffscreenCanvas, 
     options?: WebGLContextAttributes
 ): GluuContext {
-    _gl = canvas.getContext('webgl2', options) as WebGL2RenderingContext;
-    if (!_gl) {
+    const gl = canvas.getContext('webgl2', options) as GluuContext;
+    if (!gl) {
         throw new Error('WebGL2 is not supported');
     }
 
-    let resize: ResizeFunction = (canvas instanceof HTMLCanvasElement)? 
+    // Appropriate use of a ternary.
+    gl.resize = (canvas instanceof HTMLCanvasElement) ? 
         (
             width: u32 = canvas.clientWidth,
             height: u32 = canvas.clientHeight,
@@ -18,7 +25,7 @@ export function init(
         ): void => {
             canvas.width = width;
             canvas.height = height;
-            _gl.viewport(x, y, width, height);
+            gl.viewport(x, y, width, height);
         }
     : (
         width: u32 = canvas.width,
@@ -28,12 +35,15 @@ export function init(
     ): void => {
         canvas.width = width;
         canvas.height = height;
-        _gl.viewport(x, y, width, height);
+        gl.viewport(x, y, width, height);
     }
-
-    return {
-        resize,
-    };
+    
+    // yeah so we're assigning a GluuContext to a WebGL2RenderingContext...
+    // but it just works... for now.
+    
+    // UNSAFE: Not sure if anything requires a specific "instanceof WebGL2RenderingContext", but if so, this could break.
+    _gl = gl;
+    return gl;
 }
 
 type ResizeFunction = {
@@ -59,7 +69,7 @@ type ResizeFunction = {
     (width: u32, height: u32, x: u32, y: u32): void;
 }
 
-interface GluuContext {
+interface GluuContext extends WebGL2RenderingContext {
     resize: ResizeFunction;
 }
 

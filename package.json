@@ -1,16 +1,15 @@
 {
-  "name": "gluu",
-  "version": "0.1.0",
+  "name": "webgluu",
+  "version": "0.1.3",
   "description": "A tiny library to glue together some parts of WebGL",
-  "main": "index.js",
+  "main": "index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "cd example && webpack --mode production",
     "dev": "cd example && webpack serve --open --mode=development",
     "start": "cd example && webpack serve --open --mode=production"
   },
   "author": "Kyle Simmons",
-  "license": "ISC",
+  "license": "MIT",
   "files": [
     "src/"
   ],

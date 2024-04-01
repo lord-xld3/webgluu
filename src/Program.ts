@@ -48,3 +48,5 @@ export function createShaderPrograms(
         return linkProgram(vertShader, fragShader);
     });
 }
+
+//TODO: Don't compile shaders if they are already compiled.

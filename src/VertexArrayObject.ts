@@ -25,7 +25,7 @@ export class VertexArrayObject {
         });
         ebo?.bind();
 
-        // unbind the EBO target so it can't leak into the next VAO.
+        // unbind the EBO target so it can't "leak" into other VAOs.
         this.unbind();
         ebo?.unbind();
     }

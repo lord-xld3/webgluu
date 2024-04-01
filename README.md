@@ -1,4 +1,15 @@
-import * as Gluu from '../index'
+# webgluu
+
+A low(ish)-level abstraction library for WebGL2, acting as a base layer for 2D/3D rendering engines.
+
+Implementing anything with this library will likely require extensive knowledge of WebGL (shoutout to webglfundamentals).
+
+## Getting Started
+
+npm install webgluu
+
+```#Typescript
+import * as Gluu from 'webgluu';
 const gl = Gluu.init(document.getElementById('canvas') as HTMLCanvasElement);
 
 const program = Gluu.createShaderPrograms(
@@ -41,7 +52,7 @@ const mesh = new Gluu.VertexBufferObject(vertices, [
 // Create an element buffer object for the indices
 const ebo = new Gluu.ElementBufferObject(new Uint16Array([0, 1, 2]));
 
-// Create a vertex array object to bind the buffers
+// Create a vertex array object to encapsulate buffers and reduce binding calls
 const vao = new Gluu.VertexArrayObject([mesh], ebo);
 
 
@@ -63,3 +74,20 @@ function render() {
     // Loop
     requestAnimationFrame(render);
 }
+```
+
+## Recommendations
+
+1. TypeScript can help describe some of these abstract objects better.
+
+2. Use a bundler, Webpack works great with its dev server.
+
+3. Learn the fundamentals of WebGL!
+
+## Roadmap
+
+- Transform Feedback Buffer Objects
+- Setting default values for attributes
+- Simpler uniform and attribute control
+
+Future projects like a rendering engine and advanced debugger may be separate.
