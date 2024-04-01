@@ -1,4 +1,4 @@
-import { gl } from './Context';
+import { GluuContext } from './Context';
 
 /**
  * Compiles a shader from source code.
@@ -6,7 +6,7 @@ import { gl } from './Context';
  * @param {GLenum} type - The type of shader (VERTEX_SHADER or FRAGMENT_SHADER).
  * @returns {WebGLShader} The compiled shader.
  */
-function compileShader(source: string, type: GLenum): WebGLShader {
+function compileShader(gl: WebGL2RenderingContext, source: string, type: GLenum): WebGLShader {
     const shader = gl.createShader(type) as WebGLShader;
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
@@ -22,7 +22,7 @@ function compileShader(source: string, type: GLenum): WebGLShader {
  * @param {WebGLShader} frag - The fragment shader.
  * @returns {WebGLProgram} The shader program.
  */
-function linkProgram(vert: WebGLShader, frag: WebGLShader): WebGLProgram {
+function linkProgram(gl: WebGL2RenderingContext, vert: WebGLShader, frag: WebGLShader): WebGLProgram {
     const program = gl.createProgram() as WebGLProgram;
     gl.attachShader(program, vert);
     gl.attachShader(program, frag);
@@ -39,10 +39,14 @@ function linkProgram(vert: WebGLShader, frag: WebGLShader): WebGLProgram {
  * @returns {WebGLProgram[]} An array of compiled shader programs.
  * @throws If any program throws.
  */
-export function createShaderPrograms(shaders: [string, string][]): WebGLProgram[] {
-    return shaders.map(([vert, frag]) => {
-        const vertShader = compileShader(vert, gl.VERTEX_SHADER);
-        const fragShader = compileShader(frag, gl.FRAGMENT_SHADER);
-        return linkProgram(vertShader, fragShader);
+export function createShaderPrograms(
+    context: GluuContext, 
+    shaders: { vert: string, frag: string }[]
+): WebGLProgram[] {
+    const gl = context.getGL();
+    return shaders.map(({ vert, frag }) => {
+        const vertShader = compileShader(gl, vert, gl.VERTEX_SHADER);
+        const fragShader = compileShader(gl, frag, gl.FRAGMENT_SHADER);
+        return linkProgram(gl, vertShader, fragShader);
     });
 }

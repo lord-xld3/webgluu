@@ -1,4 +1,4 @@
-import * as Gluu from './index';
+import * as Gluu from '../src/index';
 const ctx = new Gluu.GluuContext(document.getElementById('canvas') as HTMLCanvasElement);
 const gl = ctx.getGL();
 

@@ -1,4 +1,4 @@
-import { gl } from "./Context";
+import { GluuContext } from "./Context";
 import { VertexBufferObject, ElementBufferObject } from "./BufferObject";
 
 /**
@@ -6,6 +6,7 @@ import { VertexBufferObject, ElementBufferObject } from "./BufferObject";
  */
 export class VertexArrayObject {
     private readonly vao: WebGLVertexArrayObject;
+    private readonly gl: WebGL2RenderingContext;
     
     /**
      * Creates a new VertexArrayObject.
@@ -14,9 +15,12 @@ export class VertexArrayObject {
      * @param ebo - The ElementBufferObject to encapsulate (optional).
      */
     constructor(
+        context: GluuContext,
         vbo: VertexBufferObject,
         ebo?: ElementBufferObject,
     ) {
+        const gl = context.getGL();
+        this.gl = gl;
         this.vao = gl.createVertexArray() as WebGLVertexArrayObject;
        
         this.bind();
@@ -31,14 +35,14 @@ export class VertexArrayObject {
      * Binds the VertexArrayObject.
      */
     public bind(): void {
-        gl.bindVertexArray(this.vao);
-        gl.enableVertexAttribArray(0);
+        this.gl.bindVertexArray(this.vao);
+        this.gl.enableVertexAttribArray(0);
     }
 
     /**
      * Unbinds the VertexArrayObject.
      */
     public unbind(): void {
-        gl.bindVertexArray(null);
+        this.gl.bindVertexArray(null);
     }
 }
