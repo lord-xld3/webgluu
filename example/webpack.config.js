@@ -1,4 +1,3 @@
-const fs = require('fs');
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
@@ -10,10 +9,8 @@ const parentDir = path.resolve(__dirname, '..');
 module.exports = {
     entry: {
         main: [
-            './main.js', 
+            './main.ts', 
             './style.css', 
-            ...fs.readdirSync('./img').map(file => `./img/${file}`),
-            ...fs.readdirSync('./shaders').map(file => `./shaders/${file}`)
         ],
     },
     output: {
@@ -35,7 +32,15 @@ module.exports = {
                     },
                 },
             },
+            {
+                test: /\.tsx?$/,
+                use: 'ts-loader',
+                exclude: /node_modules/,
+            },
         ],
+    },
+    resolve: {
+        extensions: ['.tsx', '.ts', '.js'],
     },
     plugins: [
         new HtmlWebpackPlugin({
