@@ -1,32 +1,31 @@
-import { GluuContext } from "./Context";
+import { _gl } from "./Context";
 import { VertexBufferObject, ElementBufferObject } from "./BufferObject";
 
 /**
- * A Vertex Array Object (VAO) encapsulates a vertex buffer object (VBO) and an optional element buffer object (EBO).
+ * A VertexArrayObject (VAO) encapsulates multiple VertexBufferObjects (VBOs) and an optional ElementBufferObject (EBO).
  */
 export class VertexArrayObject {
     private readonly vao: WebGLVertexArrayObject;
-    private readonly gl: WebGL2RenderingContext;
     
     /**
      * Creates a new VertexArrayObject.
-     * @param draw - The draw function.
-     * @param vbo - The VertexBufferObject to encapsulate.
+     * @param vbos - The VertexBufferObjects to encapsulate.
      * @param ebo - The ElementBufferObject to encapsulate (optional).
      */
     constructor(
-        context: GluuContext,
-        vbo: VertexBufferObject,
+        vbos: VertexBufferObject[],
         ebo?: ElementBufferObject,
     ) {
-        const gl = context.getGL();
-        this.gl = gl;
-        this.vao = gl.createVertexArray() as WebGLVertexArrayObject;
-       
-        this.bind();
-        vbo.bind();
-        ebo?.bind();
+        this.vao = _gl.createVertexArray() as WebGLVertexArrayObject;
         
+        
+        this.bind();
+        vbos.forEach((vbo) => {
+            vbo.bind();
+        });
+        ebo?.bind();
+
+        // unbind the EBO target so it can't leak into the next VAO.
         this.unbind();
         ebo?.unbind();
     }
@@ -35,14 +34,13 @@ export class VertexArrayObject {
      * Binds the VertexArrayObject.
      */
     public bind(): void {
-        this.gl.bindVertexArray(this.vao);
-        this.gl.enableVertexAttribArray(0);
+        _gl.bindVertexArray(this.vao);
     }
 
     /**
      * Unbinds the VertexArrayObject.
      */
     public unbind(): void {
-        this.gl.bindVertexArray(null);
+        _gl.bindVertexArray(null);
     }
 }

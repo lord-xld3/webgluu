@@ -1,4 +1,4 @@
-import { GluuContext } from './Context';
+import { _gl } from './Context';
 
 /**
  * Compiles a shader from source code.
@@ -6,12 +6,12 @@ import { GluuContext } from './Context';
  * @param {GLenum} type - The type of shader (VERTEX_SHADER or FRAGMENT_SHADER).
  * @returns {WebGLShader} The compiled shader.
  */
-function compileShader(gl: WebGL2RenderingContext, source: string, type: GLenum): WebGLShader {
-    const shader = gl.createShader(type) as WebGLShader;
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        throw new Error(`Failed to compile shader: ${gl.getShaderInfoLog(shader)}`);
+function compileShader(source: string, type: GLenum): WebGLShader {
+    const shader = _gl.createShader(type) as WebGLShader;
+    _gl.shaderSource(shader, source);
+    _gl.compileShader(shader);
+    if (!_gl.getShaderParameter(shader, _gl.COMPILE_STATUS)) {
+        throw new Error(`Failed to compile shader: ${_gl.getShaderInfoLog(shader)}`);
     }
     return shader;
 }
@@ -22,13 +22,13 @@ function compileShader(gl: WebGL2RenderingContext, source: string, type: GLenum)
  * @param {WebGLShader} frag - The fragment shader.
  * @returns {WebGLProgram} The shader program.
  */
-function linkProgram(gl: WebGL2RenderingContext, vert: WebGLShader, frag: WebGLShader): WebGLProgram {
-    const program = gl.createProgram() as WebGLProgram;
-    gl.attachShader(program, vert);
-    gl.attachShader(program, frag);
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        throw new Error(`Failed to link program: ${gl.getProgramInfoLog(program)}`);
+function linkProgram(vert: WebGLShader, frag: WebGLShader): WebGLProgram {
+    const program = _gl.createProgram() as WebGLProgram;
+    _gl.attachShader(program, vert);
+    _gl.attachShader(program, frag);
+    _gl.linkProgram(program);
+    if (!_gl.getProgramParameter(program, _gl.LINK_STATUS)) {
+        throw new Error(`Failed to link program: ${_gl.getProgramInfoLog(program)}`);
     }
     return program;
 }
@@ -40,13 +40,11 @@ function linkProgram(gl: WebGL2RenderingContext, vert: WebGLShader, frag: WebGLS
  * @throws If any program throws.
  */
 export function createShaderPrograms(
-    context: GluuContext, 
     shaders: { vert: string, frag: string }[]
 ): WebGLProgram[] {
-    const gl = context.getGL();
     return shaders.map(({ vert, frag }) => {
-        const vertShader = compileShader(gl, vert, gl.VERTEX_SHADER);
-        const fragShader = compileShader(gl, frag, gl.FRAGMENT_SHADER);
-        return linkProgram(gl, vertShader, fragShader);
+        const vertShader = compileShader(vert, _gl.VERTEX_SHADER);
+        const fragShader = compileShader(frag, _gl.FRAGMENT_SHADER);
+        return linkProgram(vertShader, fragShader);
     });
 }

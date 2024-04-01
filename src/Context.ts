@@ -1,32 +1,83 @@
-export class GluuContext {
-    private readonly canvas: HTMLCanvasElement; // Add property declaration for 'canvas'
-    private readonly gl: WebGL2RenderingContext;
-    
-    constructor(canvas: HTMLCanvasElement) {
-        this.canvas = canvas;
-        let gl = canvas.getContext('webgl2') as WebGL2RenderingContext;
-        if (!gl) {
-            throw new Error('WebGL2 is not supported');
+import { u32 } from "./Types";
+
+export function init(
+    canvas: HTMLCanvasElement | OffscreenCanvas, 
+    options?: WebGLContextAttributes
+): GluuContext {
+    _gl = canvas.getContext('webgl2', options) as WebGL2RenderingContext;
+    if (!_gl) {
+        throw new Error('WebGL2 is not supported');
+    }
+
+    let resize: ResizeFunction = (canvas instanceof HTMLCanvasElement)? 
+        (
+            width: u32 = canvas.clientWidth,
+            height: u32 = canvas.clientHeight,
+            x: u32 = 0,
+            y: u32 = 0,
+        ): void => {
+            canvas.width = width;
+            canvas.height = height;
+            _gl.viewport(x, y, width, height);
         }
-        this.gl = gl;
+    : (
+        width: u32 = canvas.width,
+        height: u32 = canvas.height,
+        x: u32 = 0,
+        y: u32 = 0,
+    ): void => {
+        canvas.width = width;
+        canvas.height = height;
+        _gl.viewport(x, y, width, height);
     }
 
-    public getCanvas(): HTMLCanvasElement {
-        return this.canvas;
-    }
+    return {
+        resize,
+    };
+}
 
-    public getGL(): WebGL2RenderingContext {
-        return this.gl;
-    }
+type ResizeFunction = {
+    /**
+     * Resizes the viewport & canvas to match client dimensions.
+     */
+    (): void;
 
-    public resize(
-        width: number = this.canvas.clientWidth,
-        height: number = this.canvas.clientHeight,
-        x: number = 0,
-        y: number = 0,
-    ): void {
-        this.canvas.width = width;
-        this.canvas.height = height;
-        this.gl.viewport(x, y, width, height);
-    }
+    /**
+     * Resizes the viewport & canvas to the specified dimensions.
+     * @param width - The new width.
+     * @param height - The new height.
+     */
+    (width: u32, height: u32): void;
+
+    /**
+     * Resizes the viewport & canvas to the specified dimensions and position.
+     * @param width - The new width.
+     * @param height - The new height.
+     * @param x - The new x position.
+     * @param y - The new y position.
+     */
+    (width: u32, height: u32, x: u32, y: u32): void;
+}
+
+interface GluuContext {
+    resize: ResizeFunction;
+}
+
+export let _gl: WebGL2RenderingContext;
+export let _program: WebGLProgram;
+
+export function getContext(): WebGL2RenderingContext {
+    return _gl;
+}
+
+export function getProgram(): WebGLProgram {
+    return _program;
+}
+
+export function setContext(gl: WebGL2RenderingContext): void {
+    _gl = gl;
+}
+
+export function setProgram(program: WebGLProgram): void {
+    _program = program;
 }

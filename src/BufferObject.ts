@@ -1,12 +1,11 @@
-import { GluuContext } from "./Context";
+import { _gl, _program } from "./Context";
 import { GLVertexComponents, u32 } from './Types';
 
 /**
  * A GL "BufferObject" has a valid buffer of data and describes how to use that buffer.
  */
 abstract class BufferObject {
-    protected readonly gl: WebGL2RenderingContext;
-    protected readonly buf: WebGLBuffer;
+    protected readonly buf: WebGLBuffer; // UBO needs to access this.
     private readonly target: GLenum;
     private readonly usage: GLenum;
     
@@ -18,14 +17,12 @@ abstract class BufferObject {
      * [bindBuffer()](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/bindBuffer)
      */
     constructor(
-        context: GluuContext,
         target: GLenum, 
-        usage: GLenum = context.getGL().STATIC_DRAW
+        usage: GLenum = _gl.STATIC_DRAW,
     ) {
-        this.gl = context.getGL();
-        this.buf = this.gl.createBuffer() as WebGLBuffer;
+        this.buf = _gl.createBuffer() as WebGLBuffer;
         if (!this.buf) {
-            throw new Error(`${this} Failed to create BufferObject using context: ${this.gl}`);
+            throw new Error(`${this} Failed to create BufferObject using context: ${_gl}`);
         }
         this.target = target;
         this.usage = usage;
@@ -35,14 +32,14 @@ abstract class BufferObject {
      * Binds the BufferObject with bindBuffer()
      */
     public bind(): void {
-        this.gl.bindBuffer(this.target, this.buf);
+        _gl.bindBuffer(this.target, this.buf);
     }
 
     /**
      * Unbinds the BufferObject with bindBuffer()
      */
     public unbind(): void {
-        this.gl.bindBuffer(this.target, null);
+        _gl.bindBuffer(this.target, null);
     }
 
     /**
@@ -50,7 +47,7 @@ abstract class BufferObject {
      * @param data - The data to be copied into the buffer.
      */
     public setBuffer(data: ArrayBufferView): void {
-        this.gl.bufferData(this.target, data, this.usage);
+        _gl.bufferData(this.target, data, this.usage);
     }
 
     /**
@@ -66,7 +63,7 @@ abstract class BufferObject {
         srcOffset: u32 = 0,
         length: u32 = data.byteLength,
     ): void {
-        this.gl.bufferSubData(
+        _gl.bufferSubData(
             this.target, 
             dstOffset, 
             data, 
@@ -87,11 +84,10 @@ export class ElementBufferObject extends BufferObject {
      * @param usage - Data usage pattern (default: gl.STATIC_DRAW).
      */
     constructor(
-        context: GluuContext,
         data: ArrayBufferView,
         usage?: GLenum,
     ) {
-        super(context, ElementBufferObject.target, usage);
+        super(ElementBufferObject.target, usage);
         this.bind();
         this.setBuffer(data);
     }
@@ -105,6 +101,7 @@ export class ElementBufferObject extends BufferObject {
  * @param {boolean} [normalized=false] - Whether integer data values should be normalized.
  * @param {u32} [stride=0] - The byte offset between consecutive generic vertex attributes.
  * @param {u32} [offset=0] - The offset of the first component in the vertex attribute array.
+ * @param {u32} [divisor=0] - The number of instances that will pass between updates of the attribute.
  */
 export type AttributePointerInfo = {
     attribute: string,
@@ -113,6 +110,7 @@ export type AttributePointerInfo = {
     normalized?: boolean,
     stride?: u32,
     offset?: u32,
+    divisor?: u32,
 };
 
 /**
@@ -126,35 +124,33 @@ type AttributePointer = Required<AttributePointerInfo> & { index: GLint };
 export class VertexBufferObject extends BufferObject{
     static readonly target = WebGL2RenderingContext.ARRAY_BUFFER;
     private readonly ptrs: AttributePointer[];
+    
     /**
      * Creates a new VertexBufferObject.
-     * 
-     * @param {WebGLProgram} program - The shader program associated with the VBO.
      * @param {ArrayBufferView} data - The data buffer.
      * @param {Object[]} attributes - Information about vertex attribute pointers.
      * @param {GLenum} [usage=gl.STATIC_DRAW] - Data usage pattern.
      */
     constructor(
-        context: GluuContext,
-        program: WebGLProgram,
         data: ArrayBufferView,
         attributes: AttributePointerInfo[],
         usage?: GLenum,
     ) {
         // Verify attributes and map default values to pointers.
-        super(context, VertexBufferObject.target, usage);
+        super(VertexBufferObject.target, usage);
         this.ptrs = attributes.map(ptr => {
-            const index = this.gl.getAttribLocation(program, ptr.attribute);
+            const index = _gl.getAttribLocation(_program, ptr.attribute);
             if (index === -1) {
-                throw new Error(`Attribute "${ptr.attribute}" not found in program: ${program}`);
+                throw new Error(`Attribute "${ptr.attribute}" not found in program: ${_program}`);
             }
             return {
                 index,
                 ...ptr,
-                type: ptr.type ?? this.gl.FLOAT,
+                type: ptr.type ?? _gl.FLOAT,
                 normalized: ptr.normalized ?? false,
                 stride: ptr.stride ?? 0,
                 offset: ptr.offset ?? 0,
+                divisor: ptr.divisor ?? 0,
             } as AttributePointer;
         });
         
@@ -165,12 +161,13 @@ export class VertexBufferObject extends BufferObject{
     }
 
     /**
-     * Binds the VBO and binds all attribute pointers.
+     * Binds the VBO and enables all attribute pointers.
      */
     public override bind(): void {
         super.bind();
         this.ptrs.forEach(ptr => {
-            this.gl.vertexAttribPointer(
+            _gl.enableVertexAttribArray(ptr.index);
+            _gl.vertexAttribPointer(
                 ptr.index,
                 ptr.size,
                 ptr.type,
@@ -178,25 +175,9 @@ export class VertexBufferObject extends BufferObject{
                 ptr.stride,
                 ptr.offset
             );
+            _gl.vertexAttribDivisor(ptr.index, ptr.divisor);
         });
-    }
-
-    public modifyAttribute(attribute: string, enable?: boolean): void {
-        const ptr = this.ptrs.find(p => p.attribute === attribute);
-        if (!ptr) {
-            throw new Error(`Attribute "${attribute}" not found in VBO: ${this}.`);
-        }
-        
-        if (enable !== undefined) {
-            if (enable) {
-                this.gl.enableVertexAttribArray(ptr.index);
-            } else {
-                this.gl.disableVertexAttribArray(ptr.index);
-            }
-        }
-    }
-    
-    
+    }   
 }
 
 /**
@@ -208,38 +189,35 @@ export class UniformBufferObject extends BufferObject {
 
     /**
      * Creates a new UniformBufferObject.
-     * @param program - The shader program associated with the UBO.
      * @param blockName - The name of the uniform block.
      * @param data - The data buffer.
      * @param binding - The binding index for the uniform block.
      * @param usage - Data usage pattern (default: gl.STATIC_DRAW).
      */
     constructor(
-        context: GluuContext,
-        program: WebGLProgram,
         blockName: string,
         data: ArrayBufferView,
         binding: GLuint,
         usage?: u32,
     ) {
-        super(context, UniformBufferObject.target, usage);
-        this.blockIndex = this.gl.getUniformBlockIndex(program, blockName);
-        if (this.blockIndex === this.gl.INVALID_INDEX) {
-            throw new Error(`Uniform block "${blockName}" not found in program: ${program}`);
+        super(UniformBufferObject.target, usage);
+        this.blockIndex = _gl.getUniformBlockIndex(_program, blockName);
+        if (this.blockIndex === _gl.INVALID_INDEX) {
+            throw new Error(`Uniform block "${blockName}" not found in program: ${_program}`);
         }
 
         this.bind();
         this.setBuffer(data);
-        this.gl.uniformBlockBinding(program, this.blockIndex, binding);
+        _gl.uniformBlockBinding(_program, this.blockIndex, binding);
     }
 
     public override bind(): void {
         super.bind();
-        this.gl.bindBufferBase(UniformBufferObject.target, this.blockIndex, this.buf);
+        _gl.bindBufferBase(UniformBufferObject.target, this.blockIndex, this.buf);
     }
 
     public override unbind(): void {
-        this.gl.bindBufferBase(UniformBufferObject.target, this.blockIndex, null);
+        _gl.bindBufferBase(UniformBufferObject.target, this.blockIndex, null);
         super.unbind();
     }
 
