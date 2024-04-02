@@ -1,5 +1,8 @@
 import { _gl } from './Context';
 
+// Compiled shader cache
+const shaderCache: Map<string, WebGLShader> = new Map();
+
 /**
  * Compiles a shader from source code.
  * @param {string} source - The source code of the shader.
@@ -7,12 +10,20 @@ import { _gl } from './Context';
  * @returns {WebGLShader} The compiled shader.
  */
 function compileShader(source: string, type: GLenum): WebGLShader {
+    // Check if the shader has already been compiled
+    if (shaderCache.has(source)) {
+        return shaderCache.get(source)!;
+    }
+
     const shader = _gl.createShader(type) as WebGLShader;
     _gl.shaderSource(shader, source);
     _gl.compileShader(shader);
     if (!_gl.getShaderParameter(shader, _gl.COMPILE_STATUS)) {
         throw new Error(`Failed to compile shader: ${_gl.getShaderInfoLog(shader)}`);
     }
+
+    // Cache the compiled shader
+    shaderCache.set(source, shader);
     return shader;
 }
 
@@ -30,6 +41,10 @@ function linkProgram(vert: WebGLShader, frag: WebGLShader): WebGLProgram {
     if (!_gl.getProgramParameter(program, _gl.LINK_STATUS)) {
         throw new Error(`Failed to link program: ${_gl.getProgramInfoLog(program)}`);
     }
+    
+    // Clean up shaders
+    _gl.deleteShader(vert);
+    _gl.deleteShader(frag);
     return program;
 }
 
@@ -48,5 +63,3 @@ export function createShaderPrograms(
         return linkProgram(vertShader, fragShader);
     });
 }
-
-//TODO: Don't compile shaders if they are already compiled.

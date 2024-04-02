@@ -12,7 +12,7 @@ export function init(
 ): GluuContext {
     const gl = canvas.getContext('webgl2', options) as GluuContext;
     if (!gl) {
-        throw new Error('WebGL2 is not supported');
+        throw new Error(`Failed to get WebGL2 context on canvas: ${canvas}, with options: ${options}`);
     }
 
     // Appropriate use of a ternary.
