@@ -73,21 +73,42 @@ interface GluuContext extends WebGL2RenderingContext {
     resize: ResizeFunction;
 }
 
+/**
+ * Global context. Use getContext() or setContext() to access.
+ */
 export let _gl: WebGL2RenderingContext;
+
+/**
+ * Global program. Use getProgram() or setProgram() to access.
+ */
 export let _program: WebGLProgram;
 
+/**
+ * Returns the global WebGL2 context.
+ */
 export function getContext(): WebGL2RenderingContext {
     return _gl;
 }
 
+/**
+ * Returns the global program.
+ */
 export function getProgram(): WebGLProgram {
     return _program;
 }
 
+/**
+ * Sets the global WebGL2 context.
+ * @param gl - The WebGL2 context to set.
+ */
 export function setContext(gl: WebGL2RenderingContext): void {
     _gl = gl;
 }
 
+/**
+ * Sets the global program.
+ * @param program - The program to set.
+ */
 export function setProgram(program: WebGLProgram): void {
     _program = program;
 }

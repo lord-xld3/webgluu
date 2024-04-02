@@ -2,7 +2,7 @@ import { _gl, _program } from "./Context";
 import { GLVertexComponents, u32 } from './Types';
 
 /**
- * A GL "BufferObject" has a valid buffer of data and describes how to use that buffer.
+ * A GL "BufferObject" holds a WebGLBuffer and describes how to use it.
  */
 abstract class BufferObject {
     protected readonly buf: WebGLBuffer; // UBO needs to access this.
@@ -238,9 +238,14 @@ export class UniformBufferObject extends BufferObject {
 
         tldr; buffer must be a multiple of 16 bytes or everything explodes on SOME devices.
         */
-        const alignedSize = (data.byteLength + 15) & ~15;
-        const alignedBuffer = new (data.constructor as any)(alignedSize);
-        alignedBuffer.set(data);
-        super.setBuffer(alignedBuffer);
+        if (_gl.getActiveUniformBlockParameter(_program, this.blockIndex, _gl.UNIFORM_BLOCK_DATA_SIZE) 
+        - data.byteLength > 0) {
+            const alignedSize = (data.byteLength + 15) & ~15;
+            const alignedBuffer = new (data.constructor as any)(alignedSize);
+            alignedBuffer.set(data);
+            super.setBuffer(alignedBuffer);
+        } else {
+            super.setBuffer(data);
+        }
     }
 }
