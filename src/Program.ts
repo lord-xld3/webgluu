@@ -1,65 +1,72 @@
+// Program.ts
+
 import { _gl } from './Context';
 
-// Compiled shader cache
 const shaderCache: Map<string, WebGLShader> = new Map();
 
-/**
- * Compiles a shader from source code.
- * @param {string} source - The source code of the shader.
- * @param {GLenum} type - The type of shader (VERTEX_SHADER or FRAGMENT_SHADER).
- * @returns {WebGLShader} The compiled shader.
- */
-function compileShader(source: string, type: GLenum): WebGLShader {
-    // Check if the shader has already been compiled
+function compileShader(
+    type: number, 
+    source: string
+): WebGLShader {
     if (shaderCache.has(source)) {
         return shaderCache.get(source)!;
     }
 
-    const shader = _gl.createShader(type) as WebGLShader;
+    const shader = _gl.createShader(type)!;
     _gl.shaderSource(shader, source);
     _gl.compileShader(shader);
     if (!_gl.getShaderParameter(shader, _gl.COMPILE_STATUS)) {
         throw new Error(`Failed to compile shader: ${_gl.getShaderInfoLog(shader)}`);
     }
 
-    // Cache the compiled shader
     shaderCache.set(source, shader);
     return shader;
 }
 
 /**
- * Creates a shader program from vertex and fragment shaders.
- * @param {WebGLShader} vert - The vertex shader.
- * @param {WebGLShader} frag - The fragment shader.
- * @returns {WebGLProgram} The shader program.
+ * Creates a WebGL program from a [vert, frag] shader pair.
+ * @returns The compiled WebGL program.
+ * @throws {Error} If the program fails to link or compile.
  */
-function linkProgram(vert: WebGLShader, frag: WebGLShader): WebGLProgram {
-    const program = _gl.createProgram() as WebGLProgram;
-    _gl.attachShader(program, vert);
-    _gl.attachShader(program, frag);
+export function createProgram(
+    [vert, frag]: [string, string]
+): WebGLProgram {
+    const program = _gl.createProgram()!;
+    const vertShader = compileShader(_gl.VERTEX_SHADER, vert);
+    const fragShader = compileShader(_gl.FRAGMENT_SHADER, frag);
+    _gl.attachShader(program, vertShader);
+    _gl.attachShader(program, fragShader);
     _gl.linkProgram(program);
     if (!_gl.getProgramParameter(program, _gl.LINK_STATUS)) {
         throw new Error(`Failed to link program: ${_gl.getProgramInfoLog(program)}`);
     }
-    
-    // Clean up shaders
-    _gl.deleteShader(vert);
-    _gl.deleteShader(frag);
     return program;
 }
 
 /**
- * Creates shader programs from vertex and fragment shader sources.
- * @param {Array<[string, string]>} shaders - Array of vertex and fragment shader source pairs.
- * @returns {WebGLProgram[]} An array of compiled shader programs.
- * @throws If any program throws.
+ * Creates an array of WebGL programs from an array of [vert, frag] shader pairs.
+ * @param shaders An array of [vert, frag] shader pairs.
  */
-export function createShaderPrograms(
-    shaders: { vert: string, frag: string }[]
+export function createPrograms(
+    shaders: [string, string][]
 ): WebGLProgram[] {
-    return shaders.map(({ vert, frag }) => {
-        const vertShader = compileShader(vert, _gl.VERTEX_SHADER);
-        const fragShader = compileShader(frag, _gl.FRAGMENT_SHADER);
-        return linkProgram(vertShader, fragShader);
-    });
+    const programs = [];
+
+    for (let i=0; i<shaders.length; i++) {
+        try {
+            programs.push(createProgram(shaders[i]));
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    return programs;
+}
+
+/**
+ * Deletes compiled shaders and clears the shader cache.
+ */
+export function cleanShaders(): void {
+    shaderCache.forEach(shader => _gl.deleteShader(shader));
+    shaderCache.clear();
 }

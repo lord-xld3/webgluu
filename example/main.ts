@@ -1,9 +1,8 @@
 import * as Gluu from '../index'
 const gl = Gluu.init(document.getElementById('canvas') as HTMLCanvasElement);
 
-const program = Gluu.createShaderPrograms(
-    [{
-        vert: 
+const program = Gluu.createProgram(
+    [
         `#version 300 es
         in vec2 a_position;
         out vec4 v_position;
@@ -11,7 +10,6 @@ const program = Gluu.createShaderPrograms(
             gl_Position = vec4(a_position, 0, 1);
             v_position = gl_Position;
         }`,
-        frag: 
         `#version 300 es
         precision mediump float;
         in vec4 v_position;
@@ -19,8 +17,10 @@ const program = Gluu.createShaderPrograms(
         void main() {
             color = vec4(1, 0, 0, 1);
         }`
-    }]
-)[0];
+    ]
+);
+
+Gluu.cleanShaders();
 
 // Sets the currently referenced program for buffer objects.
 // This does NOT call gl.useProgram().
