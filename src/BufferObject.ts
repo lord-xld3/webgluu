@@ -1,11 +1,11 @@
 import { _gl, _program } from "./Context";
-import { GLVertexComponents, u32 } from './Types';
+import { GLVertexComponents, u32, TypedArray } from "./Types";
 
 /**
  * A GL "BufferObject" holds a WebGLBuffer and describes how to use it.
  */
 abstract class BufferObject {
-    protected readonly buf: WebGLBuffer; // UBO needs to access this.
+    protected readonly buf: WebGLBuffer; // UBO & TFBO need to access this for bindBufferBase().
     private readonly target: GLenum;
     private readonly usage: GLenum;
     
@@ -20,7 +20,7 @@ abstract class BufferObject {
         target: GLenum, 
         usage: GLenum = _gl.STATIC_DRAW,
     ) {
-        this.buf = _gl.createBuffer() as WebGLBuffer;
+        this.buf = _gl.createBuffer()!;
         if (!this.buf) {
             throw new Error(`${this} Failed to create BufferObject using context: ${_gl}`);
         }
@@ -46,22 +46,22 @@ abstract class BufferObject {
      * Set the contents of the buffer.
      * @param data - The data to be copied into the buffer.
      */
-    public setBuffer(data: ArrayBufferView): void {
+    public setBuffer(data: TypedArray): void {
         _gl.bufferData(this.target, data, this.usage);
     }
 
     /**
-     * Updates a subset of the buffer's data store.
+     * Updates a subset of the buffer's data.
      * @param data - The data to be copied into the buffer.
      * @param dstOffset - The destination offset in bytes. Default: 0.
      * @param srcOffset - The source offset in bytes. Default: 0.
-     * @param length - The length of the data to be copied in bytes. Default: data.byteLength.
+     * @param length - The number of elements in the array. Default: data.length.
      */
     public setSubBuffer(
-        data: ArrayBufferView, 
+        data: TypedArray, 
         dstOffset: u32 = 0,
         srcOffset: u32 = 0,
-        length: u32 = data.byteLength,
+        length: u32 = data.length,
     ): void {
         _gl.bufferSubData(
             this.target, 
@@ -80,11 +80,11 @@ export class ElementBufferObject extends BufferObject {
     static readonly target = WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER;
     /**
      * Creates a new ElementBufferObject.
-     * @param {ArrayBufferView} data - The data buffer.
+     * @param {TypedArray} data - The data buffer.
      * @param {GLenum} [usage=gl.STATIC_DRAW] - Data usage pattern (default: gl.STATIC_DRAW).
      */
     constructor(
-        data: ArrayBufferView,
+        data: TypedArray,
         usage?: GLenum,
     ) {
         super(ElementBufferObject.target, usage);
@@ -127,12 +127,12 @@ export class VertexBufferObject extends BufferObject{
     
     /**
      * Creates a new VertexBufferObject.
-     * @param {ArrayBufferView} data - The data buffer.
+     * @param {TypedArray} data - The data buffer.
      * @param {Object[]} attributes - Information about vertex attribute pointers.
      * @param {GLenum} [usage=gl.STATIC_DRAW] - Data usage pattern (default: gl.STATIC_DRAW).
      */
     constructor(
-        data: ArrayBufferView,
+        data: TypedArray,
         attributes: AttributePointerInfo[],
         usage?: GLenum,
     ) {
@@ -186,18 +186,19 @@ export class VertexBufferObject extends BufferObject{
 export class UniformBufferObject extends BufferObject {
     private readonly blockIndex: GLuint;
     static readonly target = WebGL2RenderingContext.UNIFORM_BUFFER;
+    private dataBuffer: TypedArray; // Internal buffer so we only have to pad once.
 
     /**
      * Creates a new UniformBufferObject.
      * @param blockName - The name of the uniform block.
      * @param data - The data buffer.
-     * @param binding - The binding index for the uniform block.
+     * @param binding - The binding index for the uniform block (default: 0).
      * @param usage - Data usage pattern (default: gl.STATIC_DRAW).
      */
     constructor(
         blockName: string,
-        data: ArrayBufferView,
-        binding: GLuint,
+        data: TypedArray,
+        binding: GLuint = 0,
         usage?: u32,
     ) {
         super(UniformBufferObject.target, usage);
@@ -207,7 +208,10 @@ export class UniformBufferObject extends BufferObject {
         }
 
         this.bind();
-        this.setBuffer(data);
+
+        // Pad the data to 16 bytes for consistency on all platforms.
+        this.dataBuffer = padNBytes(data, 16);
+        super.setBuffer(this.dataBuffer);
         _gl.uniformBlockBinding(_program, this.blockIndex, binding);
     }
 
@@ -221,31 +225,25 @@ export class UniformBufferObject extends BufferObject {
         super.unbind();
     }
 
-    public override setBuffer(data: ArrayBufferView): void {
-        /* Okay, I know this looks like black magic, let me explain.
+    // We only need to override setBuffer since it writes the whole buffer and needs padding.
+    // setSubBuffer doesn't write the whole buffer.
 
-        ALL scalars like a "bool" are 4 bytes, but if we just pass in the bool it fails spectacularly on Linux, in my experience.
-        If you pass in more data than the uniform block can hold, GL doesn't care.
-        If you pass in LESS data, the whole program blows up.
-
-        This takes (length + 15) AND NOT 15.
-
-        0 + 15 AND NOT 15 = 0
-        1 + 15 AND NOT 15 = 16
-        ...
-
-        Then creates a new ArrayBuffer of the type that was passed in (data.constructor as any) and sets the data.
-
-        tldr; buffer must be a multiple of 16 bytes or everything explodes on SOME devices.
-        */
-        if (_gl.getActiveUniformBlockParameter(_program, this.blockIndex, _gl.UNIFORM_BLOCK_DATA_SIZE) 
-        - data.byteLength > 0) {
-            const alignedSize = (data.byteLength + 15) & ~15;
-            const alignedBuffer = new (data.constructor as any)(alignedSize);
-            alignedBuffer.set(data);
-            super.setBuffer(alignedBuffer);
-        } else {
-            super.setBuffer(data);
-        }
+    public override setBuffer(data: TypedArray): void {
+        // dataBuffer is already padded, set data and copy to GPU.
+        this.dataBuffer.set(data);
+        super.setBuffer(this.dataBuffer);
     }
+}
+
+/**
+ * Pads an TypedArray to n bytes.
+ * @param data - An TypedArray to pad.
+ * @param n - The number of bytes to pad to.
+ * @returns - A new TypedArray with the data padded to n bytes.
+ */
+function padNBytes(data: TypedArray, n: u32): TypedArray {
+    const alignedSize = (data.byteLength + n - 1) & ~(n - 1);
+    const alignedBuffer = new (data.constructor as any)(alignedSize);
+    alignedBuffer.set(data);
+    return alignedBuffer;
 }

@@ -1,6 +1,6 @@
 // Program.ts
 
-import { _gl } from './Context';
+import { _gl } from "./Context";
 
 const shaderCache: Map<string, WebGLShader> = new Map();
 

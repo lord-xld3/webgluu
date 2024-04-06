@@ -14,3 +14,9 @@ export type i32 = number;
 export type f32 = number;
 
 export type GLVertexComponents = 1 | 2 | 3 | 4;
+
+export type TypedArray = 
+Int8Array | Uint8Array | 
+Int16Array | Uint16Array | 
+Int32Array | Uint32Array | 
+Float32Array | Float64Array;

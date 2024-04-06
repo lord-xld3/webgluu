@@ -16,13 +16,13 @@ export class VertexArrayObject {
         vbos: VertexBufferObject[],
         ebo?: ElementBufferObject,
     ) {
-        this.vao = _gl.createVertexArray() as WebGLVertexArrayObject;
+        this.vao = _gl.createVertexArray()!;
         
         
         this.bind();
-        vbos.forEach((vbo) => {
-            vbo.bind();
-        });
+        for (let i=0; i<vbos.length; i++) {
+            vbos[i].bind();
+        };
         ebo?.bind();
 
         // unbind the EBO target so it can't "leak" into other VAOs.
