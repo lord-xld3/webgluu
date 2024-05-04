@@ -1,33 +1,23 @@
 import { _gl } from "./Context";
-import { VertexBufferObject, ElementBufferObject } from "./BufferObject";
 
 /**
- * A VertexArrayObject (VAO) encapsulates multiple VertexBufferObjects (VBOs) and an optional ElementBufferObject (EBO).
+ * A VertexArrayObject (VAO) encapsulates the state needed to render a mesh.
  */
 export class VertexArrayObject {
     private readonly vao: WebGLVertexArrayObject;
     
     /**
-     * Creates a new VertexArrayObject.
-     * @param vbos - The VertexBufferObjects to encapsulate.
-     * @param ebo - The ElementBufferObject to encapsulate (optional).
+     * Creates a new VertexArrayObject and binds it.
+     * 
+     * @throws {Error} Throws an error if the WebGL context fails to create a vertex array object.
      */
-    constructor(
-        vbos: VertexBufferObject[],
-        ebo?: ElementBufferObject,
-    ) {
+    constructor(){
         this.vao = _gl.createVertexArray()!;
-        
-        
-        this.bind();
-        for (let i=0; i<vbos.length; i++) {
-            vbos[i].bind();
-        };
-        ebo?.bind();
+        if (!this.vao) {
+            throw new Error(`Failed to create VertexArrayObject using context: ${_gl}`);
+        }
 
-        // unbind the EBO target so it can't "leak" into other VAOs.
-        this.unbind();
-        ebo?.unbind();
+        this.bind();
     }
 
     /**
