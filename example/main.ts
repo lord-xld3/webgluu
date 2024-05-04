@@ -51,26 +51,24 @@ const bBuffer = new Gluu.VertexBufferObject(
 
 bBuffer.enableAllAttributes();
 
-const tf = gl.createTransformFeedback()!;
-gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, tf);
+const sumBuffer = new Gluu.BufferObject(gl.ARRAY_BUFFER, gl.STATIC_COPY);
+sumBuffer.bind();
+sumBuffer.setBuffer(new Float32Array(4));
 
-const sumBuffer = gl.createBuffer()!;
-gl.bindBuffer(gl.ARRAY_BUFFER, sumBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, 4 * 4, gl.STATIC_DRAW);
+const differenceBuffer = new Gluu.BufferObject(gl.ARRAY_BUFFER, gl.STATIC_COPY);
+differenceBuffer.bind();
+differenceBuffer.setBuffer(new Float32Array(4));
 
-const differenceBuffer = gl.createBuffer()!;
-gl.bindBuffer(gl.ARRAY_BUFFER, differenceBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, 4 * 4, gl.STATIC_DRAW);
+const productBuffer = new Gluu.BufferObject(gl.ARRAY_BUFFER, gl.STATIC_COPY);
+productBuffer.bind();
+productBuffer.setBuffer(new Float32Array(4));
 
-const productBuffer = gl.createBuffer()!;
-gl.bindBuffer(gl.ARRAY_BUFFER, productBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, 4 * 4, gl.STATIC_DRAW);
+const tfbo = new Gluu.TransformFeedbackBufferObject([
+    [sumBuffer, 0, 16],
+    [differenceBuffer, 0, 16],
+    [productBuffer, 0, 16],
+]);
 
-gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, sumBuffer);
-gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, differenceBuffer);
-gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 2, productBuffer);
-
-gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, tf);
 gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
 // Pre-render setup
@@ -82,20 +80,22 @@ render();
 function render() {
     gl.useProgram(program);
 
-    gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, tf);
-    gl.beginTransformFeedback(gl.POINTS);
+    tfbo.bind();
+    tfbo.begin(gl.POINTS);
     gl.drawArrays(gl.POINTS, 0, 4);
-    gl.endTransformFeedback();
-    gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
+    tfbo.end();
 
     logResults(sumBuffer, 'sum');
     logResults(differenceBuffer, 'difference');
     logResults(productBuffer, 'product');
 }
 
-function logResults(buffer: WebGLBuffer, label: string) {
+function logResults<T extends Gluu.BufferObject>(
+    buffer: Gluu.BufferObjectLike<T>, 
+    label: string
+): void {
     const data = new Float32Array(4); // This should be equal to the length of the buffer.
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer.buf);
     gl.getBufferSubData(gl.ARRAY_BUFFER, 0, data);
     console.log(`${label}: ${data}`);
 }

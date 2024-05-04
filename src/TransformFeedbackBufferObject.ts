@@ -1,30 +1,22 @@
+import { BufferObject } from "./BufferObject";
 import { _gl } from "./Context";
-import { GLVertexComponents, u32 } from "./Types";
-import { VertexBufferObject } from "./VertexBufferObject";
+import { GLVertexComponents, u32, BufferObjectLike } from "./Types";
 
 /**
  * A TransformFeedbackBufferObject (TFBO) processes vertex data and writes the results to buffer objects.
- * It holds no data itself and relies on VertexBufferObjects to input and output data.
+ * It holds no data itself and relies on BufferObjects to input and output data.
  */
-export class TransformFeedbackBufferObject {
+export class TransformFeedbackBufferObject<T extends BufferObject> {
     private readonly buf: WebGLTransformFeedback;
     static readonly target = WebGL2RenderingContext.TRANSFORM_FEEDBACK;
     static readonly outputTarget = WebGL2RenderingContext.TRANSFORM_FEEDBACK_BUFFER;
 
     /**
      * Creates a new TransformFeedbackBufferObject.
-     * @param outputBuffers - An array of tuples where each tuple contains a VertexBufferObject
-     *                        and a binding point (as a number). The VertexBufferObject will store
-     *                        the output data from the transform feedback operation.
-     * 
-     * @note The outputBuffers array must be in the same order as the varyings specified in the shader.
-     * @note The outputBuffers should be created with the usage pattern gl.STATIC_COPY.
-     * @note The outputBuffers should have the appropriate size for the data being written to them.
-     * 
-     * @throws {Error} Throws an error if the WebGL context fails to create a transform feedback object.
+     * @param outputBuffers - [BufferObjectLike, offset, size][]
      */
     constructor(
-        outputBuffers: [VertexBufferObject, u32][]
+        outputBuffers: [BufferObjectLike<T>, u32, u32][]
     ) {
         this.buf = _gl.createTransformFeedback()!;
         if (!this.buf) {
@@ -35,8 +27,8 @@ export class TransformFeedbackBufferObject {
 
         // Bind output buffers to the transform feedback object.
         for (let i = 0; i < outputBuffers.length; i++) {
-            let [buffer, binding] = outputBuffers[i];
-            _gl.bindBufferBase(TransformFeedbackBufferObject.outputTarget, binding, buffer);
+            let [buffer, offset, size] = outputBuffers[i];
+            _gl.bindBufferRange(TransformFeedbackBufferObject.outputTarget, i, buffer.buf, offset, size);
         }
     }
     
@@ -55,10 +47,10 @@ export class TransformFeedbackBufferObject {
     }
 
     /**
-     * Start transform feedback operation.
-     * @param primitive - The primitive type to start the transform feedback operation with (example: gl.POINTS)
+     * Begin transform feedback operation.
+     * @param primitive - The primitive type to begin the transform feedback operation with (example: gl.POINTS)
      */
-    public start(primitive: GLVertexComponents): void {
+    public begin(primitive: GLVertexComponents): void {
         this.bind();
         _gl.beginTransformFeedback(primitive);
     }

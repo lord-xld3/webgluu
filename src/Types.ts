@@ -1,9 +1,7 @@
-// Some basic, but more descriptive types that should not need an explanation.
-// These are basically just hints for the developer.
+import { BufferObject } from "./BufferObject"
 
-// Like, obviously a u32 can't be negative, but its not enforced by the type system...
-// stupid type system man.
-// don't get me started on floats and integers.
+// Anything that extends BufferObject will have some common properties and methods.
+export type BufferObjectLike<T extends BufferObject> = T;
 
 export type u8 = number;
 export type i8 = number;
@@ -13,10 +11,10 @@ export type u32 = number;
 export type i32 = number;
 export type f32 = number;
 
-export type GLVertexComponents = 1 | 2 | 3 | 4;
+export type GLVertexComponents = number;
 
 export type TypedArray = 
 Int8Array | Uint8Array | 
 Int16Array | Uint16Array | 
 Int32Array | Uint32Array | 
-Float32Array | Float64Array;
+Float32Array // | Float64Array is not supported by WebGL with only 32-bit float support.

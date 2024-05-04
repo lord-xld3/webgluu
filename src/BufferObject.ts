@@ -4,8 +4,8 @@ import { u32, TypedArray } from "./Types";
 /**
  * A GL "BufferObject" holds a WebGLBuffer and describes how to use it.
  */
-export abstract class BufferObject {
-    protected readonly buf: WebGLBuffer;
+export class BufferObject {
+    public readonly buf: WebGLBuffer; // This is THE buffer.
     private readonly target: GLenum;
     private readonly usage: GLenum;
     

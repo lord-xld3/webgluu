@@ -1,5 +1,6 @@
 export * from "./src/Context";
 
+export * from "./src/BufferObject";
 export * from "./src/ElementBufferObject";
 export * from "./src/UniformBufferObject";
 export * from "./src/VertexBufferObject";
