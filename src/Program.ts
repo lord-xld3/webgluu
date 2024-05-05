@@ -2,6 +2,9 @@
 
 import { _gl } from "./Context";
 
+/**
+ * A cache of compiled shaders.
+ */
 const shaderCache: Map<string, WebGLShader> = new Map();
 
 /**
@@ -38,9 +41,17 @@ function compileShader(
     return shader;
 }
 
-function linkProgram(
+/**
+ * Links a program with a pair of [vert, frag] shaders.
+ * @param program The program to link.
+ * @param vert The vertex shader source.
+ * @param frag The fragment shader source.
+ * @throws {Error} If the program can't be linked.
+ */
+export function linkProgram(
     program: WebGLProgram,
-    [vert, frag]: [string, string],
+    vert: string,
+    frag: string,
 ): void {
     const vertShader = compileShader(_gl.VERTEX_SHADER, vert);
     const fragShader = compileShader(_gl.FRAGMENT_SHADER, frag);
@@ -52,7 +63,10 @@ function linkProgram(
     }
 }
 
-function createProgram(): WebGLProgram {
+/**
+ * Creates a WebGL program.
+ */
+export function createProgram(): WebGLProgram {
     const program = _gl.createProgram();
     if (!program) {
         throw new Error(`Failed to create program using context: ${_gl}`);
@@ -61,17 +75,18 @@ function createProgram(): WebGLProgram {
 }
 
 /**
- * Creates a WebGL program from a pair [vert, frag] shaders.
- * @param shaders A pair of [vert, frag] shaders.
+ * Creates a WebGL program from a vertex and fragment shader source.
+ * @param vert The vertex shader source.
+ * @param frag The fragment shader source.
  */
 export function createShaderProgram(
-    [vert, frag]: [string, string],
+    vert: string,
+    frag: string,
 ): WebGLProgram {
     const program = createProgram();
-    linkProgram(program, [vert, frag]);
+    linkProgram(program, vert, frag);
     return program;
 }
-
 
 /**
  * Creates an array of WebGL programs from an array of [vert, frag] shader pairs.
@@ -80,7 +95,7 @@ export function createShaderProgram(
 export function createShaderPrograms(
     shaders: [string, string][]
 ): WebGLProgram[] {
-    return shaders.map(([vert, frag]) => createShaderProgram([vert, frag]));
+    return shaders.map(([vert, frag]) => createShaderProgram(vert, frag));
 }
 
 /**
@@ -92,18 +107,18 @@ export function cleanShaders(): void {
 }
 
 /**
- * Creates a WebGL program from a pair [vert, frag] shaders with transform feedback varyings.
- * @param shaders A pair of [vert, frag] shaders.
- * @param varyings The transform feedback varyings.
- * @param interleaved Whether the output buffers are interleaved or separate.
+ * Creates a WebGL program from a vertex shader source and an array of varyings.
+ * @param shader The vertex shader source.
+ * @param varyings The varyings to output.
+ * @param interleaved Whether the varyings are interleaved. (default: false)
  */
-export function createTFBOProgram(
-    [vert, frag]: [string, string],
+export function createTransformFeedbackProgram(
+    shader: string,
     varyings: string[],
     interleaved: boolean = false,
 ): WebGLProgram {
     const program = createProgram();
     _gl.transformFeedbackVaryings(program, varyings, interleaved ? _gl.INTERLEAVED_ATTRIBS : _gl.SEPARATE_ATTRIBS);
-    linkProgram(program, [vert, frag]);
+    linkProgram(program, shader, `#version 300 es\nprecision highp float;\nvoid main() {}`);
     return program;
 }

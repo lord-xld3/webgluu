@@ -1,28 +1,19 @@
 import * as Gluu from "../index";
 const gl = Gluu.init(document.getElementById('canvas') as HTMLCanvasElement);
 
-const program = Gluu.createTFBOProgram(
-    [
-        `#version 300 es
+const program = Gluu.createTransformFeedbackProgram(
+    `#version 300 es
+    in float a;
+    in float b;
+    out float sum;
+    out float difference;
+    out float product;
 
-        in float a;
-        in float b;
-        out float sum;
-        out float difference;
-        out float product;
-
-        void main() {
-            sum = a + b;
-            difference = a - b;
-            product = a * b;
-        }
-        `,
-
-        `#version 300 es
-        precision highp float;
-        void main() {
-        }`
-    ], 
+    void main() {
+        sum = a + b;
+        difference = a - b;
+        product = a * b;
+    }`,
     ['sum', 'difference', 'product'],
     false,
 );
@@ -39,7 +30,6 @@ const aBuffer = new Gluu.VertexBufferObject(
         { attribute: 'a', size: 1 },
     ]
 );
-
 aBuffer.enableAllAttributes();
 
 const bBuffer = new Gluu.VertexBufferObject(
@@ -48,22 +38,15 @@ const bBuffer = new Gluu.VertexBufferObject(
         { attribute: 'b', size: 1 },
     ]
 );
-
 bBuffer.enableAllAttributes();
 
-const sumBuffer = new Gluu.BufferObject(gl.ARRAY_BUFFER, gl.STATIC_COPY);
-sumBuffer.bind();
-sumBuffer.setBuffer(new Float32Array(4));
+const sumBuffer = new Gluu.FeedbackBufferObject(new Float32Array(4));
+const differenceBuffer = new Gluu.FeedbackBufferObject(new Float32Array(4));
+const productBuffer = new Gluu.FeedbackBufferObject(new Float32Array(4));
 
-const differenceBuffer = new Gluu.BufferObject(gl.ARRAY_BUFFER, gl.STATIC_COPY);
-differenceBuffer.bind();
-differenceBuffer.setBuffer(new Float32Array(4));
-
-const productBuffer = new Gluu.BufferObject(gl.ARRAY_BUFFER, gl.STATIC_COPY);
-productBuffer.bind();
-productBuffer.setBuffer(new Float32Array(4));
-
-const tfbo = new Gluu.TransformFeedbackBufferObject([
+const tf = new Gluu.TransformFeedback();
+tf.bind();
+Gluu.TransformFeedback.bindOutputBuffers([
     [sumBuffer, 0, 16],
     [differenceBuffer, 0, 16],
     [productBuffer, 0, 16],
@@ -80,10 +63,11 @@ render();
 function render() {
     gl.useProgram(program);
 
-    tfbo.bind();
-    tfbo.begin(gl.POINTS);
+    tf.bind();
+    tf.begin(gl.POINTS);
     gl.drawArrays(gl.POINTS, 0, 4);
-    tfbo.end();
+    tf.end();
+    tf.unbind();
 
     logResults(sumBuffer, 'sum');
     logResults(differenceBuffer, 'difference');
