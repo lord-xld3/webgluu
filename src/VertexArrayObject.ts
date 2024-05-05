@@ -1,36 +1,40 @@
 import { _gl } from "./Context";
 
 /**
- * A VertexArrayObject (VAO) encapsulates the state needed to render a mesh.
+ * A VertexArrayObject (VAO) silently captures the state of buffers and attributes.
  */
-export class VertexArrayObject {
-    private readonly vao: WebGLVertexArrayObject;
-    
-    /**
-     * Creates a new VertexArrayObject and binds it.
-     * 
-     * @throws {Error} Throws an error if the WebGL context fails to create a vertex array object.
-     */
-    constructor(){
-        this.vao = _gl.createVertexArray()!;
-        if (!this.vao) {
-            throw new Error(`Failed to create VertexArrayObject using context: ${_gl}`);
-        }
-
-        this.bind();
-    }
-
+interface VertexArrayObject {
     /**
      * Binds the VertexArrayObject.
+     * Any state captured while bound will be restored when re-binding the VAO.
+     * @note Binding the VAO does not capture existing state.
      */
-    public bind(): void {
-        _gl.bindVertexArray(this.vao);
+    bind(): void;
+    /**
+     * Unbinds the VertexArrayObject. This does not affect state, and the VAO no longer captures state.
+     */
+    unbind(): void;
+}
+
+/**
+ * Creates a VertexArrayObject that silently captures the state of buffers and attributes.
+ * @note When the VAO is re-binded, the state of the buffers and attributes will be restored.
+ * @note Specifically, it captures the state of VertexBuffers + attributes, and ElementBuffers.
+ */
+export function createVertexArray(): VertexArrayObject {
+    const vao = _gl.createVertexArray();
+    if (!vao) {
+        throw new Error(`Failed to create VertexArray using context: ${_gl}`);
     }
 
-    /**
-     * Unbinds the VertexArrayObject.
-     */
-    public unbind(): void {
-        _gl.bindVertexArray(null);
-    }
+    return {
+        bind() {
+            _gl.bindVertexArray(vao);
+        },
+        unbind,
+    };
+}
+
+function unbind() {
+    _gl.bindVertexArray(null);
 }

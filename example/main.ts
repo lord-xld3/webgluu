@@ -1,6 +1,9 @@
 import * as Gluu from "../index";
-const gl = Gluu.init(document.getElementById('canvas') as HTMLCanvasElement);
 
+// We can use an OffscreenCanvas since we're not rendering to the screen.
+const gl = Gluu.init(new OffscreenCanvas(0, 0));
+
+// Create a shader program with transform feedback varyings.
 const program = Gluu.createTransformFeedbackProgram(
     `#version 300 es
     in float a;
@@ -18,13 +21,15 @@ const program = Gluu.createTransformFeedbackProgram(
     false,
 );
 
+// Clean up compiled shaders and cache.
 Gluu.cleanShaders();
 
 // Sets the currently referenced program for buffer objects.
 // This does NOT call gl.useProgram().
 Gluu.setProgram(program);
 
-const aBuffer = new Gluu.VertexBufferObject(
+// Input buffer for float a;
+const aBuffer = Gluu.createVertexBuffer(
     new Float32Array([1, 2, 3, 4]),
     [
         { attribute: 'a', size: 1 },
@@ -32,7 +37,8 @@ const aBuffer = new Gluu.VertexBufferObject(
 );
 aBuffer.enableAllAttributes();
 
-const bBuffer = new Gluu.VertexBufferObject(
+// Input buffer for float b;
+const bBuffer = Gluu.createVertexBuffer(
     new Float32Array([5, 6, 7, 8]),
     [
         { attribute: 'b', size: 1 },
@@ -40,27 +46,35 @@ const bBuffer = new Gluu.VertexBufferObject(
 );
 bBuffer.enableAllAttributes();
 
-const sumBuffer = new Gluu.FeedbackBufferObject(new Float32Array(4));
-const differenceBuffer = new Gluu.FeedbackBufferObject(new Float32Array(4));
-const productBuffer = new Gluu.FeedbackBufferObject(new Float32Array(4));
+// Output buffers for sum, difference, and product.
+const sumBuffer = Gluu.createFeedbackBuffer(new Float32Array(4));
+const differenceBuffer = Gluu.createFeedbackBuffer(new Float32Array(4));
+const productBuffer = Gluu.createFeedbackBuffer(new Float32Array(4));
 
-const tf = new Gluu.TransformFeedback();
-tf.bind();
-Gluu.TransformFeedback.bindOutputBuffers([
+// Create a TransformFeedback object.
+const tf = Gluu.createTransformFeedback();
+
+// Bind the output buffers to the TransformFeedback target.
+Gluu.bindFeedbackOutputBuffers([
     [sumBuffer, 0, 16],
     [differenceBuffer, 0, 16],
     [productBuffer, 0, 16],
 ]);
 
-gl.bindBuffer(gl.ARRAY_BUFFER, null);
+// gl.bindBuffer(gl.ARRAY_BUFFER, null); 
+// Not necessary with FeedbackBufferObjects. 
+// No output buffer is bound to ARRAY_BUFFER.
 
 // Pre-render setup
 gl.clearColor(0, 0, 0, 1);
+
+// Disable rasterization, as we're not rendering to the screen.
 gl.enable(gl.RASTERIZER_DISCARD);
 
 render();
 
 function render() {
+    // Use TFBO program.
     gl.useProgram(program);
 
     tf.bind();

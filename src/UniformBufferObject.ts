@@ -1,59 +1,83 @@
 import { _gl, _program } from "./Context";
 import { u32, TypedArray } from "./Types";
-import { BufferObject } from "./BufferObject";
+import { BufferObject, createBufferObject } from "./BufferObject";
 import { padNBytes } from "./Util";
 
 /**
- * A Uniform BufferObject (UBO) holds uniform data.
+ * A Uniform Buffer Object manages uniform data.
  */
-
-export class UniformBufferObject extends BufferObject {
-    private readonly blockIndex: GLuint;
-    static readonly target = WebGL2RenderingContext.UNIFORM_BUFFER;
-    private dataBuffer: TypedArray; // Internal buffer so we only have to pad once.
-
+interface UniformBufferObject extends BufferObject {
     /**
-     * Creates a new UniformBufferObject.
-     * @param blockName - The name of the uniform block.
-     * @param data - The data buffer.
-     * @param binding - The binding index for the uniform block (default: 0).
-     * @param usage - Data usage pattern (default: gl.STATIC_DRAW).
+     * Binds the uniform block to the specified binding point.
+     * @param binding - The binding point for the uniform block.
      */
-    constructor(
-        blockName: string,
-        data: TypedArray,
-        binding: GLuint = 0,
-        usage: u32 = WebGL2RenderingContext.STATIC_DRAW,
-    ) {
-        super(UniformBufferObject.target, usage);
-        this.blockIndex = _gl.getUniformBlockIndex(_program, blockName);
-        if (this.blockIndex === WebGL2RenderingContext.INVALID_INDEX) {
-            throw new Error(`Uniform block "${blockName}" not found in program: ${_program}`);
-        }
+    bindBlock(binding: u32): void;
+    /**
+     * Binds the uniform buffer and uniform block binding point.
+     */
+    bind(): void;
+    /**
+     * Unbinds the uniform buffer and uniform block binding point.
+     */
+    unbind(): void;
+}
 
-        this.bind();
-
-        // Pad the data to 16 bytes for consistency on all platforms.
-        this.dataBuffer = padNBytes(data, 16);
-        super.setBuffer(this.dataBuffer);
-        _gl.uniformBlockBinding(_program, this.blockIndex, binding);
+/**
+ * Creates a uniform buffer object and binds it.
+ * @param blockName - The name of the uniform block in the shader program.
+ * @param data - The data to be stored in the buffer.
+ * @param binding - The binding point for the uniform block.
+ * @param usage - The usage pattern of the buffer. (Default: STATIC_DRAW)
+ */
+export function createUniformBuffer(
+    blockName: string,
+    data: TypedArray,
+    binding: GLintptr,
+    usage: GLenum = _gl.STATIC_DRAW
+): UniformBufferObject {
+    
+    // Retrieve the uniform block index
+    const blockIndex = _gl.getUniformBlockIndex(_program, blockName);
+    if (blockIndex === _gl.INVALID_INDEX) {
+        throw new Error(`Uniform block "${blockName}" not found in program: ${_program}`);
     }
 
-    public override bind(): void {
-        super.bind();
-        _gl.bindBufferBase(UniformBufferObject.target, this.blockIndex, this.buf);
+    // Create a buffer object with the target as UNIFORM_BUFFER
+    const bufferObject = createBufferObject(_gl.UNIFORM_BUFFER, usage);
+    
+    // Bind the buffer
+    bufferObject.bind();
+
+    // Pad the data to 16 bytes
+    const _buffer = padNBytes(data, 16);
+    
+    // Set the buffer data
+    bufferObject.setBuffer(_buffer);
+    
+    // Bind the uniform block
+    bindBlock(binding);
+
+    function bindBlock(binding: u32) {
+        _gl.uniformBlockBinding(_program, blockIndex, binding);
     }
 
-    public override unbind(): void {
-        _gl.bindBufferBase(UniformBufferObject.target, this.blockIndex, null);
-        super.unbind();
-    }
-
-    // We only need to override setBuffer since it overwrites the whole buffer AS IS and needs padding.
-    // setSubBuffer writes to the existing buffer.
-    public override setBuffer(data: TypedArray): void {
-        // dataBuffer is already padded, set data and copy to GPU.
-        this.dataBuffer.set(data);
-        super.setBuffer(this.dataBuffer);
-    }
+    // Return an object with the desired methods and properties
+    return {
+        ...bufferObject,
+        bindBlock,
+        bind() {
+            bufferObject.bind();
+            _gl.bindBufferBase(_gl.UNIFORM_BUFFER, blockIndex, bufferObject.buf);
+        },
+        unbind() {
+            _gl.bindBufferBase(_gl.UNIFORM_BUFFER, blockIndex, null);
+            bufferObject.unbind();
+        },
+        // Overwrite the setBuffer method to use internal padded buffer.
+        setBuffer(data: TypedArray) {
+            // Update the internal buffer
+            _buffer.set(data);
+            bufferObject.setBuffer(_buffer);
+        },
+    };
 }

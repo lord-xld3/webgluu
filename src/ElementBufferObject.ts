@@ -1,23 +1,18 @@
-import { TypedArray } from "./Types";
-import { BufferObject } from "./BufferObject";
+import { _gl } from './Context';
+import { TypedArray } from './Types';
+import { createBufferObject } from './BufferObject';
 
 /**
- * An Element BufferObject (EBO) holds vertex indices.
+ * Creates an element buffer object for use with WebGL2.
+ * @param data - A TypedArray used to set the buffer contents.
+ * @param usage - Data usage pattern. (default: STATIC_DRAW)
  */
-
-export class ElementBufferObject extends BufferObject {
-    static readonly target = WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER;
-    /**
-     * Creates a new ElementBufferObject.
-     * @param {TypedArray} data - The data buffer.
-     * @param {GLenum} [usage=gl.STATIC_DRAW] - Data usage pattern (default: gl.STATIC_DRAW).
-     */
-    constructor(
-        data: TypedArray,
-        usage: GLenum = WebGL2RenderingContext.STATIC_DRAW
-    ) {
-        super(ElementBufferObject.target, usage);
-        this.bind();
-        this.setBuffer(data);
-    }
+export function createElementBuffer(
+    data: TypedArray,
+    usage: GLenum = _gl.STATIC_DRAW,
+) {
+    const buffer = createBufferObject(_gl.ELEMENT_ARRAY_BUFFER, usage);
+    buffer.bind();
+    buffer.setBuffer(data);
+    return buffer;
 }

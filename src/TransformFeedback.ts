@@ -3,67 +3,79 @@ import { _gl } from "./Context";
 import { GLVertexComponents, u32, BufferObjectLike } from "./Types";
 
 /**
- * TransformFeedback processes vertex data and writes the results to buffer objects.
- * It holds no data itself and relies on BufferObjects to input and output data.
+ * A TransformFeedback object manages the output of vertex shader data.
  */
-export class TransformFeedback {
-    static readonly target = WebGL2RenderingContext.TRANSFORM_FEEDBACK;
-    static readonly outputTarget = WebGL2RenderingContext.TRANSFORM_FEEDBACK_BUFFER;
-
-    // The TransformFeedback object.
-    private readonly tfbo: WebGLTransformFeedback;
-
-    constructor() {
-        // Create TransformFeedback object.
-        this.tfbo = _gl.createTransformFeedback()!;
-        if (!this.tfbo) {
-            throw new Error(`Failed to create TransformFeedback using context: ${_gl}`);
-        }
-    }
-
+export interface TransformFeedback {
     /**
-     * Binds a range of each output buffer to the TransformFeedback target. 
-     * These can be vertex, element, or uniform buffers.
-     * @param outputBuffers - [BufferObjectLike, offset, length][]
-     * 
-     * @note The number of buffers should match the number of varyings in the TransformFeedback program.
+     * Binds the TransformFeedback object.
      */
-    public static bindOutputBuffers<T extends BufferObject>(
-        outputBuffers: [BufferObjectLike<T>, u32, u32][]
-    ): void {
-        // Bind output buffers to the transform feedback target.
-        for (let i = 0; i < outputBuffers.length; i++) {
-            let [buffer, offset, length] = outputBuffers[i];
-            _gl.bindBufferRange(TransformFeedback.outputTarget, i, buffer.buf, offset, length);
-        }
-    }
-    
+    bind: () => void;
     /**
-     * Binds the TransformFeedback.
+     * Unbinds the TransformFeedback object.
      */
-    public bind(): void {
-        _gl.bindTransformFeedback(TransformFeedback.target, this.tfbo);
+    unbind: () => void;
+    /**
+     * Starts a TransformFeedback operation.
+     * @param primitive - The number of vertices per primitive. (Default: GL.POINTS)
+     * @note options: gl.POINTS, gl.LINES, gl.TRIANGLES.
+     */
+    begin: (primitive: GLVertexComponents) => void;
+    /**
+     * Ends a TransformFeedback operation.
+     */
+    end: () => void;
+}
+
+/**
+ * Creates a TransformFeedback object and binds it.
+ */
+export function createTransformFeedback(): TransformFeedback{
+    // Create the WebGLTransformFeedback object
+    const tfbo = _gl.createTransformFeedback();
+    if (!tfbo) {
+        throw new Error(`Failed to create TransformFeedback using context: ${_gl}`);
     }
 
-    /**
-     * Unbinds the TransformFeedback.
-     */
-    public unbind(): void {
-        _gl.bindTransformFeedback(TransformFeedback.target, null);
+    function bind() {
+        _gl.bindTransformFeedback(_gl.TRANSFORM_FEEDBACK, tfbo);
     }
 
-    /**
-     * Begin transform feedback operation.
-     * @param primitive - The primitive type to begin the transform feedback operation with (example: gl.POINTS)
-     */
-    public begin(primitive: GLVertexComponents): void {
-        _gl.beginTransformFeedback(primitive);
-    }
+    // Bind on creation.
+    bind();
 
-    /**
-     * End transform feedback operation.
-     */
-    public end(): void {
-        _gl.endTransformFeedback();
+    // Return an object with the desired methods
+    return {
+        bind,
+        unbind,
+        begin,
+        end,
+    };
+}
+
+/**
+ * Binds a range of each output buffer to the TransformFeedback target.
+ * This is not specific to any TransformFeedback object.
+ * @param outputBuffers - An array of tuples containing a [BufferObject, offset, and length].
+ * @param startIndex - The index to start binding the output buffers. (Default: 0)
+ */
+export function bindFeedbackOutputBuffers<T extends BufferObject>(
+    outputBuffers: [BufferObjectLike<T>, u32, u32][],
+    startIndex: u32 = 0,
+): void {
+    for (let i = startIndex; i < outputBuffers.length; i++) {
+        let [buffer, offset, length] = outputBuffers[i];
+        _gl.bindBufferRange(_gl.TRANSFORM_FEEDBACK_BUFFER, i, buffer.buf, offset, length);
     }
+}
+
+function unbind() {
+    _gl.bindTransformFeedback(_gl.TRANSFORM_FEEDBACK, null);
+}
+
+function begin(primitive: GLVertexComponents = 0) {
+    _gl.beginTransformFeedback(primitive);
+}
+
+function end() {
+    _gl.endTransformFeedback();
 }
