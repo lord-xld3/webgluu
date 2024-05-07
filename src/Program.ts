@@ -1,11 +1,24 @@
 // Program.ts
 
 import { _gl } from "./Context";
+import { GLVertexTypes } from "./Types";
 
 /**
  * A cache of compiled shaders.
  */
-const shaderCache: Map<string, WebGLShader> = new Map();
+const _shaderCache = new Map<string, WebGLShader>();
+
+/**
+ * Information about an attribute queried from a shader program.
+ * @note [location, size, type]
+ */
+export type AttributeInfo = [GLint, GLint, GLenum];
+
+/**
+ * A map of attribute information.
+ * @note Map<attributeName, [location, size, type]>
+ */
+export type AttributeInfoMap = Map<string, AttributeInfo>;
 
 /**
  * Compiles a shader from source.
@@ -19,25 +32,25 @@ function compileShader(
 ): WebGLShader {
 
     // Check if the shader has already been compiled
-    if (shaderCache.has(source)) {
-        return shaderCache.get(source)!;
+    if (_shaderCache.has(source)) {
+        return _shaderCache.get(source)!;
     }
 
     // Create shader
-    const shader = _gl.createShader(type);
+    const shader = _gl.createShader(type)!;
     if (!shader) {
-        throw new Error(`Failed to create shader using context: ${_gl}`);
+        console.error(`Failed to create shader using context: ${_gl}`);
     }
 
     // Compile shader
     _gl.shaderSource(shader, source);
     _gl.compileShader(shader);
     if (!_gl.getShaderParameter(shader, _gl.COMPILE_STATUS)) {
-        throw new Error(`Failed to compile shader: ${_gl.getShaderInfoLog(shader)}`);
+        console.error(`Failed to compile shader: ${_gl.getShaderInfoLog(shader)}`);
     }
 
     // Cache and return shader
-    shaderCache.set(source, shader);
+    _shaderCache.set(source, shader);
     return shader;
 }
 
@@ -48,7 +61,7 @@ function compileShader(
  * @param frag The fragment shader source.
  * @throws {Error} If the program can't be linked.
  */
-export function linkProgram(
+function linkProgram(
     program: WebGLProgram,
     vert: string,
     frag: string,
@@ -59,17 +72,17 @@ export function linkProgram(
     _gl.attachShader(program, fragShader);
     _gl.linkProgram(program);
     if (!_gl.getProgramParameter(program, _gl.LINK_STATUS)) {
-        throw new Error(`Failed to link program: ${_gl.getProgramInfoLog(program)}`);
+        console.error(`Failed to link program: ${_gl.getProgramInfoLog(program)}`);
     }
 }
 
 /**
  * Creates a WebGL program.
  */
-export function createProgram(): WebGLProgram {
-    const program = _gl.createProgram();
+function createProgram(): WebGLProgram {
+    const program = _gl.createProgram()!;
     if (!program) {
-        throw new Error(`Failed to create program using context: ${_gl}`);
+        console.error(`Failed to create program using context: ${_gl}`);
     }
     return program;
 }
@@ -102,8 +115,8 @@ export function createShaderPrograms(
  * Deletes compiled shaders and clears the shader cache.
  */
 export function cleanShaders(): void {
-    shaderCache.forEach(shader => _gl.deleteShader(shader));
-    shaderCache.clear();
+    _shaderCache.forEach(shader => _gl.deleteShader(shader));
+    _shaderCache.clear();
 }
 
 /**
@@ -121,4 +134,30 @@ export function createTransformFeedbackProgram(
     _gl.transformFeedbackVaryings(program, varyings, interleaved ? _gl.INTERLEAVED_ATTRIBS : _gl.SEPARATE_ATTRIBS);
     linkProgram(program, shader, `#version 300 es\nprecision highp float;\nvoid main() {}`);
     return program;
+}
+
+/**
+ * Retrieves all attributes from a shader program.
+ * 
+ * @returns Map<attributeName, [location, size, type]>
+ */
+export function getAllAttributes(program: WebGLProgram): AttributeInfoMap{
+    const attributeCount = _gl.getProgramParameter(program, _gl.ACTIVE_ATTRIBUTES);
+    const attributeInfoMap = new Map<string, AttributeInfo>();
+    for (let i = 0; i < attributeCount; i++) {
+        const info = _gl.getActiveAttrib(program, i)!;
+        const [size, type] = GLVertexTypes[info.type];
+        if (!size || !type) {
+            console.error(`Failed to get size or type for attribute type: ${info.type}`);
+        }
+        attributeInfoMap.set(
+            info.name, // Attribute name
+            [
+                _gl.getAttribLocation(program, info.name), // Location
+                size, // Size
+                type, // Type
+            ],
+        );
+    }
+    return attributeInfoMap;
 }

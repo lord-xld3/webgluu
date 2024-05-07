@@ -12,6 +12,7 @@ export {
     createShaderProgram, 
     createShaderPrograms,
     createTransformFeedbackProgram,
+    getAllAttributes,
 } from "./src/Program";
 
 export * from "./src/Types";

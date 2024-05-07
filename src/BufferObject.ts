@@ -43,9 +43,9 @@ export function createBufferObject(
     usage: GLenum
 ): BufferObject {
     // Create a WebGLBuffer
-    const buf = _gl.createBuffer();
+    const buf = _gl.createBuffer()!;
     if (!buf) {
-        throw new Error(
+        console.error(
             `Failed to create BufferObject using context: ${_gl}
             Target: ${target}
             Usage: ${usage}`

@@ -39,7 +39,7 @@ export function createUniformBuffer(
     // Retrieve the uniform block index
     const blockIndex = _gl.getUniformBlockIndex(_program, blockName);
     if (blockIndex === _gl.INVALID_INDEX) {
-        throw new Error(`Uniform block "${blockName}" not found in program: ${_program}`);
+        console.error(`Uniform block "${blockName}" not found in program: ${_program}`);
     }
 
     // Create a buffer object with the target as UNIFORM_BUFFER
@@ -53,13 +53,13 @@ export function createUniformBuffer(
     
     // Set the buffer data
     bufferObject.setBuffer(_buffer);
-    
-    // Bind the uniform block
-    bindBlock(binding);
 
     function bindBlock(binding: u32) {
         _gl.uniformBlockBinding(_program, blockIndex, binding);
     }
+    
+    // Bind the uniform block
+    bindBlock(binding);
 
     // Return an object with the desired methods and properties
     return {

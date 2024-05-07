@@ -1,99 +1,150 @@
-import * as Gluu from "../index";
+import * as Gluu from '../index';
+import { mat4 } from 'gl-matrix';
 
-// We can use an OffscreenCanvas since we're not rendering to the screen.
-const gl = Gluu.init(new OffscreenCanvas(0, 0));
+function main() {
+    const gl = Gluu.init(document.getElementById('canvas') as HTMLCanvasElement);
 
-// Create a shader program with transform feedback varyings.
-const program = Gluu.createTransformFeedbackProgram(
-    `#version 300 es
-    in float a;
-    in float b;
-    out float sum;
-    out float difference;
-    out float product;
+    const tfbProgram = Gluu.createTransformFeedbackProgram(
+        // Transform feedback shader
+        `#version 300 es
+        precision highp float;
 
-    void main() {
-        sum = a + b;
-        difference = a - b;
-        product = a * b;
-    }`,
-    ['sum', 'difference', 'product'],
-    false,
-);
+        in vec2 t_position;
+        in vec2 t_velocity;
 
-// Clean up compiled shaders and cache.
-Gluu.cleanShaders();
+        uniform float u_time;
+        uniform vec2 u_resolution;
 
-// Sets the currently referenced program for buffer objects.
-// This does NOT call gl.useProgram().
-Gluu.setProgram(program);
+        out vec2 t_outPosition;
 
-// Input buffer for float a;
-const aBuffer = Gluu.createVertexBuffer(
-    new Float32Array([1, 2, 3, 4]),
-    [
-        { attribute: 'a', size: 1 },
-    ]
-);
-aBuffer.enableAllAttributes();
+        vec2 canvasModulo(vec2 n, vec2 m) {
+            return mod(mod(n, m) + m, m);
+        }
 
-// Input buffer for float b;
-const bBuffer = Gluu.createVertexBuffer(
-    new Float32Array([5, 6, 7, 8]),
-    [
-        { attribute: 'b', size: 1 },
-    ]
-);
-bBuffer.enableAllAttributes();
+        void main() {
+            t_outPosition = canvasModulo(
+                t_position + t_velocity * u_time, 
+                u_resolution
+            );
+        }`,
 
-// Output buffers for sum, difference, and product.
-const sumBuffer = Gluu.createFeedbackBuffer(new Float32Array(4));
-const differenceBuffer = Gluu.createFeedbackBuffer(new Float32Array(4));
-const productBuffer = Gluu.createFeedbackBuffer(new Float32Array(4));
+        ['t_outPosition']
+    );
 
-// Create a TransformFeedback object.
-const tf = Gluu.createTransformFeedback();
+    const shaderProgram = Gluu.createShaderProgram(
+        // Vertex shader
+        `#version 300 es
+        precision highp float;
 
-// Bind the output buffers to the TransformFeedback target.
-Gluu.bindFeedbackOutputBuffers([
-    [sumBuffer, 0, 16],
-    [differenceBuffer, 0, 16],
-    [productBuffer, 0, 16],
-]);
+        in vec4 v_position;
 
-// gl.bindBuffer(gl.ARRAY_BUFFER, null); 
-// Not necessary with FeedbackBufferObjects. 
-// No output buffer is bound to ARRAY_BUFFER.
+        uniform mat4 u_matrix;
 
-// Pre-render setup
-gl.clearColor(0, 0, 0, 1);
+        void main() {
+            gl_Position = u_matrix * v_position;
+            gl_PointSize = 10.0;
+        }`,
 
-// Disable rasterization, as we're not rendering to the screen.
-gl.enable(gl.RASTERIZER_DISCARD);
+        // Fragment shader
+        `#version 300 es
+        precision highp float;
 
-render();
+        out vec4 color;
 
-function render() {
-    // Use TFBO program.
-    gl.useProgram(program);
+        void main() {
+            color = vec4(1, 0, 0, 1);
+        }`
+    );
 
-    tf.bind();
-    tf.begin(gl.POINTS);
-    gl.drawArrays(gl.POINTS, 0, 4);
-    tf.end();
-    tf.unbind();
+    // Get the attribute information from the programs
+    const tfbInfoMap = Gluu.getAllAttributes(tfbProgram);
+    const shaderInfoMap = Gluu.getAllAttributes(shaderProgram);
 
-    logResults(sumBuffer, 'sum');
-    logResults(differenceBuffer, 'difference');
-    logResults(productBuffer, 'product');
+    gl.resize(); // Resize the canvas to get canvas dimensions
+
+    // Particle data
+    const numParticles = 1000;
+    const velocityRange = [-100, 100]; // [min, max]
+
+    // Create the position and velocity data
+    const positionData = new Float32Array(numParticles * 2);
+    const velocityData = new Float32Array(numParticles * 2);
+    {    
+        const [min, max] = velocityRange;
+        const range = max - min;
+
+        const [width, height] = [gl.canvas.width, gl.canvas.height];
+
+        for (let i = 0; i < numParticles * 2; i+=2) {
+            
+            positionData[i] = Math.random() * width;
+            positionData[i + 1] = Math.random() * height;
+
+            velocityData[i] = Math.random() * range + min;
+            velocityData[i + 1] = Math.random() * range + min;
+        }
+    }
+
+    // Setup buffers (the fun part!)
+    const positionBuffer1 = Gluu.createVertexBuffer(positionData, gl.DYNAMIC_DRAW);
+    positionBuffer1.mapAttributes([
+        [
+            tfbInfoMap, 
+            [
+                { attribute: 't_position' }
+            ]
+        ],
+        [
+            shaderInfoMap,
+            [
+                { attribute: 'v_position' }
+            ]
+        ]
+    ]);
+    
+    const positionBuffer2 = Gluu.createVertexBuffer(positionData, gl.DYNAMIC_DRAW);
+    positionBuffer2.mapAttributes([
+        [
+            tfbInfoMap, 
+            [
+                { attribute: 't_position' }
+            ]
+        ],
+        [
+            shaderInfoMap,
+            [
+                { attribute: 'v_position' }
+            ]
+        ]
+    ]);
+
+    const velocityBuffer = Gluu.createVertexBuffer(velocityData, gl.STATIC_DRAW);
+    velocityBuffer.mapAttributes([
+        [
+            tfbInfoMap,
+            [
+                { attribute: 't_velocity' }
+            ]
+        ]
+    ]);
+
+    const tfVAO1 = Gluu.createVertexArray([
+        [positionBuffer1, ['t_position']],
+        [velocityBuffer, ['t_velocity']],
+    ]);
+
+    const tfVAO2 = Gluu.createVertexArray([
+        [positionBuffer2, ['t_position']],
+        [velocityBuffer, ['t_velocity']],
+    ]);
+
+    const drawVAO1 = Gluu.createVertexArray([
+        [positionBuffer1, ['v_position']],
+    ]);
+
+    const drawVAO2 = Gluu.createVertexArray([
+        [positionBuffer2, ['v_position']],
+    ]);
 }
 
-function logResults<T extends Gluu.BufferObject>(
-    buffer: Gluu.BufferObjectLike<T>, 
-    label: string
-): void {
-    const data = new Float32Array(4); // This should be equal to the length of the buffer.
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer.buf);
-    gl.getBufferSubData(gl.ARRAY_BUFFER, 0, data);
-    console.log(`${label}: ${data}`);
-}
+main();

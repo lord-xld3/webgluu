@@ -12,7 +12,7 @@ export function init(
 ): GluuContext {
     const gl = canvas.getContext('webgl2', options) as GluuContext;
     if (!gl) {
-        throw new Error(`Failed to get WebGL2 context on canvas: ${canvas}, with options: ${options}`);
+        console.error(`Failed to get WebGL2 context on canvas: ${canvas}, with options: ${options}`);
     }
 
     // Appropriate use of a ternary.
@@ -69,36 +69,22 @@ type ResizeFunction = {
     (width: u32, height: u32, x: u32, y: u32): void;
 }
 
-interface GluuContext extends WebGL2RenderingContext {
+export interface GluuContext extends WebGL2RenderingContext {
     resize: ResizeFunction;
 }
 
 /**
- * Global context. Use getContext() or setContext() to access.
+ * Global context. Import or setContext() to access.
  */
 export let _gl: WebGL2RenderingContext;
 
 /**
- * Global program. Use getProgram() or setProgram() to access.
+ * Global program. Import or setProgram() to access.
  */
 export let _program: WebGLProgram;
 
 /**
- * Returns the global WebGL2 context.
- */
-export function getContext(): WebGL2RenderingContext {
-    return _gl;
-}
-
-/**
- * Returns the global program.
- */
-export function getProgram(): WebGLProgram {
-    return _program;
-}
-
-/**
- * Sets the global WebGL2 context.
+ * Sets the currently referenced WebGL2 context for the library.
  * @param gl - The WebGL2 context to set.
  */
 export function setContext(gl: WebGL2RenderingContext): void {
@@ -106,8 +92,9 @@ export function setContext(gl: WebGL2RenderingContext): void {
 }
 
 /**
- * Sets the global program.
+ * Sets the currently referenced WebGL2 context for the library.
  * @param program - The program to set.
+ * @note This does NOT call gl.useProgram().
  */
 export function setProgram(program: WebGLProgram): void {
     _program = program;

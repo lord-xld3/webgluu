@@ -1,6 +1,8 @@
 import { _gl } from './Context';
 import { TypedArray } from './Types';
-import { createBufferObject } from './BufferObject';
+import { BufferObject, createBufferObject } from './BufferObject';
+
+export interface ElementBufferObject extends BufferObject {}
 
 /**
  * Creates an element buffer object for use with WebGL2.

@@ -1,4 +1,6 @@
 import { _gl } from "./Context";
+import { ElementBufferObject } from "./ElementBufferObject";
+import { VertexBufferObject } from "./VertexBufferObject";
 
 /**
  * A VertexArrayObject (VAO) silently captures the state of buffers and attributes.
@@ -17,24 +19,43 @@ interface VertexArrayObject {
 }
 
 /**
- * Creates a VertexArrayObject that silently captures the state of buffers and attributes.
+ * Creates and binds a VertexArrayObject that captures the state of buffers and attributes.
+ * 
+ * @param bufferInfo - An array of [VertexBufferObject, attributeName[]] pairs.
+ * @param elementBuffer - An optional ElementBufferObject.
+ * 
+ * @note Only enables attributes from the supplied attributeName[] array for each VBO.
+ * 
  * @note When the VAO is re-binded, the state of the buffers and attributes will be restored.
  * @note Specifically, it captures the state of VertexBuffers + attributes, and ElementBuffers.
  */
-export function createVertexArray(): VertexArrayObject {
-    const vao = _gl.createVertexArray();
+export function createVertexArray(
+    vertexBufferInfo: [VertexBufferObject, string[]][],
+    elementBuffer?: ElementBufferObject,
+): VertexArrayObject {
+    const vao = _gl.createVertexArray()!;
     if (!vao) {
-        throw new Error(`Failed to create VertexArray using context: ${_gl}`);
+        console.error(`Failed to create VertexArray using context: ${_gl}`);
     }
 
-    return {
-        bind() {
-            _gl.bindVertexArray(vao);
-        },
-        unbind,
-    };
-}
+    function bind() {
+        _gl.bindVertexArray(vao);
+    }
 
-function unbind() {
-    _gl.bindVertexArray(null);
+    bind();
+
+    for (let i = 0; i < vertexBufferInfo.length; i++) {
+        const [vbo, attributes] = vertexBufferInfo[i];
+        vbo.bind();
+        vbo.enableAttributes(attributes);
+    }
+
+    elementBuffer?.bind();
+
+    return {
+        bind,
+        unbind() {
+            _gl.bindVertexArray(null);
+        },
+    };
 }

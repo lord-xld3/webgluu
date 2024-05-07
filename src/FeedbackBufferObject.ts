@@ -4,7 +4,7 @@ import { TypedArray } from './Types';
 /**
  * A FeedbackBufferObject is intended for writing to buffers that are not used in rendering.
  */
-interface FeedbackBufferObject extends BufferObject {}
+export interface FeedbackBufferObject extends BufferObject {}
 
 /**
  * A simple BufferObject for use with TransformFeedback.

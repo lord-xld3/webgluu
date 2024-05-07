@@ -13,6 +13,9 @@
   "files": [
     "src/"
   ],
+  "dependencies": {
+    "gl-matrix": "^3.4.3"
+  },
   "devDependencies": {
     "@types/webpack-bundle-analyzer": "^4.7.0",
     "css-loader": "^6.10.0",
