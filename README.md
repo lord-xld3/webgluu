@@ -9,70 +9,104 @@ Implementing anything with this library will likely require extensive knowledge 
 npm install webgluu
 
 ```#Typescript
-import * as Gluu from 'webgluu';
-const gl = Gluu.init(document.getElementById('canvas') as HTMLCanvasElement);
+import * as Gluu from "webgluu";
 
-const program = Gluu.createShaderPrograms(
-    [{
-        vert: 
-        `#version 300 es
-        in vec2 a_position;
-        out vec4 v_position;
-        void main() {
-            gl_Position = vec4(a_position, 0, 1);
-            v_position = gl_Position;
-        }`,
-        frag: 
-        `#version 300 es
-        precision mediump float;
-        in vec4 v_position;
-        out vec4 color;
-        void main() {
-            color = vec4(1, 0, 0, 1);
-        }`
-    }]
-)[0];
+// We can use an OffscreenCanvas since we're not rendering to the screen.
+const gl = Gluu.init(new OffscreenCanvas(0, 0));
+
+// Create a shader program with transform feedback varyings.
+const program = Gluu.createTransformFeedbackProgram(
+    `#version 300 es
+    in float a;
+    in float b;
+    out float sum;
+    out float difference;
+    out float product;
+
+    void main() {
+        sum = a + b;
+        difference = a - b;
+        product = a * b;
+    }`,
+    ['sum', 'difference', 'product'],
+    false,
+);
+
+// Clean up compiled shaders and cache.
+Gluu.cleanShaders();
 
 // Sets the currently referenced program for buffer objects.
 // This does NOT call gl.useProgram().
 Gluu.setProgram(program);
 
-// Define vertices for a triangle
-const vertices = new Float32Array([
-    -0.5, -0.5,  // Vertex 1
-    0.5, -0.5,   // Vertex 2
-    0.0, 0.5     // Vertex 3
+// Input buffer for float a;
+const aBuffer = Gluu.createVertexBuffer(
+    new Float32Array([1, 2, 3, 4]),
+    [
+        { attribute: 'a', size: 1 },
+    ]
+);
+aBuffer.enableAllAttributes();
+
+// Input buffer for float b;
+const bBuffer = Gluu.createVertexBuffer(
+    new Float32Array([5, 6, 7, 8]),
+    [
+        { attribute: 'b', size: 1 },
+    ]
+);
+bBuffer.enableAllAttributes();
+
+// Output buffers for sum, difference, and product.
+const sumBuffer = Gluu.createFeedbackBuffer(new Float32Array(4));
+const differenceBuffer = Gluu.createFeedbackBuffer(new Float32Array(4));
+const productBuffer = Gluu.createFeedbackBuffer(new Float32Array(4));
+
+// Create a TransformFeedback object.
+const tf = Gluu.createTransformFeedback();
+
+// Bind the output buffers to the TransformFeedback target.
+Gluu.bindFeedbackOutputBuffers([
+    [sumBuffer, 0, 16],
+    [differenceBuffer, 0, 16],
+    [productBuffer, 0, 16],
 ]);
 
-// Create a buffer object for the vertices
-const mesh = new Gluu.VertexBufferObject(vertices, [
-    { attribute: 'a_position', size: 2 },
-]);
-
-// Create an element buffer object for the indices
-const ebo = new Gluu.ElementBufferObject(new Uint16Array([0, 1, 2]));
-
-// Create a vertex array object to encapsulate buffers and reduce binding calls
-const vao = new Gluu.VertexArrayObject([mesh], ebo);
-
+// gl.bindBuffer(gl.ARRAY_BUFFER, null); 
+// Not necessary with FeedbackBufferObjects. 
+// No output buffer is bound to ARRAY_BUFFER.
 
 // Pre-render setup
 gl.clearColor(0, 0, 0, 1);
+
+// Disable rasterization, as we're not rendering to the screen.
+gl.enable(gl.RASTERIZER_DISCARD);
+
 render();
 
 function render() {
-    
-    // Resize before clearing the screen to avoid flickering
-    gl.resize();
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    
-    // Actually render stuff
+    // Use TFBO program.
     gl.useProgram(program);
-    vao.bind();
-    gl.drawElements(gl.TRIANGLES, 3, gl.UNSIGNED_SHORT, 0);
-    
-    // Loop
-    requestAnimationFrame(render);
+
+    tf.bind();
+    tf.begin(gl.POINTS);
+    gl.drawArrays(gl.POINTS, 0, 4);
+    tf.end();
+    tf.unbind();
+
+    logResults(sumBuffer, 'sum');
+    logResults(differenceBuffer, 'difference');
+    logResults(productBuffer, 'product');
+}
+
+function logResults<T extends Gluu.BufferObject>(
+    buffer: Gluu.BufferObjectLike<T>, 
+    label: string
+): void {
+    const data = new Float32Array(4); // This should be equal to the length of the buffer.
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer.buf);
+    gl.getBufferSubData(gl.ARRAY_BUFFER, 0, data);
+    console.log(`${label}: ${data}`);
 }
 ```
 
